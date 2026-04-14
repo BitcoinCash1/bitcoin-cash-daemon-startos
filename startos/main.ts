@@ -1,0 +1,164 @@
+import { sdk } from './sdk'
+import { rootDir, rpcPort } from './utils'
+import { bchdConf } from './file-models/bchd.conf'
+import { storeJson } from './file-models/store.json'
+
+export const main = sdk.setupMain(async ({ effects }) => {
+  console.log('Starting BCHD!')
+
+  const conf = await bchdConf.read().const(effects)
+  const store = await storeJson.read().once()
+  const rpcUser = store?.rpcUser ?? 'bitcoin-cash-node'
+  const rpcPassword = store?.rpcPassword ?? ''
+
+  const grpcEnabled = (conf?.grpclisten ?? '') !== ''
+
+  const bchdArgs: string[] = [
+    `--configfile=${rootDir}/bchd.conf`,
+    `--datadir=${rootDir}`,
+    `--txindex`,
+    `--addrindex`,
+    `--rpcuser=${rpcUser}`,
+    `--rpcpass=${rpcPassword}`,
+    `--rpclisten=0.0.0.0:${rpcPort}`,
+    `--listen=0.0.0.0:8333`,
+  ]
+
+  if (grpcEnabled) {
+    bchdArgs.push('--grpclisten=0.0.0.0:8335')
+  }
+
+  if (conf?.dbcachesizemb) {
+    bchdArgs.push(`--dbcachesizemb=${conf.dbcachesizemb}`)
+  }
+  if (conf?.maxpeers) {
+    bchdArgs.push(`--maxpeers=${conf.maxpeers}`)
+  }
+
+  const mounts = sdk.Mounts.of().mountVolume({
+    volumeId: 'main',
+    subpath: null,
+    mountpoint: rootDir,
+    readonly: false,
+  })
+
+  const bchdSub = await sdk.SubContainer.of(
+    effects,
+    { imageId: 'bchd' },
+    mounts,
+    'bchd-sub',
+  )
+
+  async function rpc(...args: string[]) {
+    return bchdSub.exec([
+      'bchctl',
+      `--rpcserver=127.0.0.1:${rpcPort}`,
+      `--rpcuser=${rpcUser}`,
+      `--rpcpass=${rpcPassword}`,
+      '--notls',
+      ...args,
+    ])
+  }
+
+  return sdk.Daemons.of(effects)
+    .addDaemon('primary', {
+      subcontainer: bchdSub,
+      exec: {
+        command: ['bchd', ...bchdArgs],
+        sigtermTimeout: 300_000,
+      },
+      ready: {
+        display: 'RPC',
+        fn: async () => {
+          try {
+            const res = await rpc('getinfo')
+            return res.exitCode === 0
+              ? { message: 'BCHD RPC is ready', result: 'success' }
+              : { message: 'BCHD RPC is starting...', result: 'starting' }
+          } catch {
+            return { message: 'BCHD RPC is starting...', result: 'starting' }
+          }
+        },
+      },
+      requires: [],
+    })
+    .addHealthCheck('sync-progress', {
+      ready: {
+        display: 'Blockchain Sync',
+        fn: async () => {
+          try {
+            const res = await rpc('getblockchaininfo')
+            if (res.exitCode !== 0)
+              return { message: 'Waiting for sync info', result: 'loading' }
+            const info = JSON.parse(res.stdout.toString()) as {
+              blocks: number
+              headers: number
+              verificationprogress: number
+              initialblockdownload: boolean
+            }
+            if (info.initialblockdownload) {
+              const pct = (info.verificationprogress * 100).toFixed(2)
+              return {
+                message: `Syncing blocks... ${pct}%`,
+                result: 'loading',
+              }
+            }
+            return {
+              message: `Synced — block ${info.blocks}`,
+              result: 'success',
+            }
+          } catch {
+            return { message: 'Waiting for sync info', result: 'loading' }
+          }
+        },
+      },
+      requires: ['primary'],
+    })
+    .addOneshot('synced-true', {
+      subcontainer: null,
+      exec: {
+        fn: async () => {
+          const currentStore = await storeJson.read().once()
+          if (!currentStore?.fullySynced) {
+            await storeJson.merge(effects, { fullySynced: true })
+          }
+          return null
+        },
+      },
+      requires: ['sync-progress'],
+    })
+    .addHealthCheck('peer-connections', {
+      ready: {
+        display: 'Peer Connections',
+        fn: async () => {
+          try {
+            const res = await rpc('getpeerinfo')
+            if (res.exitCode !== 0)
+              return { message: 'Unable to query peers', result: 'loading' }
+            const peers = JSON.parse(res.stdout.toString()) as Array<{
+              inbound: boolean
+            }>
+            const count = peers.length
+            if (count === 0)
+              return {
+                message: 'No peers connected — node may be starting up',
+                result: 'loading',
+              }
+            if (count < 3)
+              return {
+                message: `Only ${count} peer(s) connected`,
+                result: 'loading',
+              }
+            const inbound = peers.filter((p) => p.inbound).length
+            return {
+              message: `${count} peers (${count - inbound} outbound, ${inbound} inbound)`,
+              result: 'success',
+            }
+          } catch {
+            return { message: 'Unable to query peers', result: 'loading' }
+          }
+        },
+      },
+      requires: ['primary'],
+    })
+})
