@@ -1,5 +1,5 @@
 # ── Build BCHD from source ──────────────────────────────────────────
-FROM golang:1.21-bookworm AS build
+FROM golang:1.23-bookworm AS build
 
 ARG BCHD_VERSION=v0.21.1
 
