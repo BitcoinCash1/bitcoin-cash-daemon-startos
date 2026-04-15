@@ -13,8 +13,8 @@ export const manifest = setupManifest({
     'https://github.com/gcash/bchd',
   ],
   description: {
-    short: 'Bitcoin Cash Daemon — Go-based BCH full node (BCHD)',
-    long: 'Bitcoin Cash Daemon (BCHD) is an alternative full node implementation of the Bitcoin Cash protocol written in Go. It provides JSON-RPC, gRPC API, and BIP 157/158 compact block filters (Neutrino). Can run alongside BCHN — dependent packages choose which node to use.',
+    short: 'BCHD — Go-based Bitcoin Cash full node with gRPC and Neutrino',
+    long: 'BCHD is a full node implementation of the Bitcoin Cash protocol written in Go. Features include JSON-RPC API, gRPC API with pub/sub notifications, BIP 157/158 compact block filters (Neutrino), BIP 37 bloom filters, full transaction and address indexes, and Tor support for private peer connections.',
   },
   volumes: ['main'],
   images: {
@@ -26,7 +26,7 @@ export const manifest = setupManifest({
   },
   alerts: {
     install:
-      'Bitcoin Cash Daemon (BCHD) is a Go-based BCH full node. It can run alongside BCHN — they are separate packages. Dependent packages (Fulcrum, Explorer, mining pools) can be configured to use either node. Initial Block Download may take several hours.',
+      'BCHD is a Go-based Bitcoin Cash full node. Initial Block Download (IBD) may take several hours depending on hardware and network speed.',
     update: null,
     uninstall:
       'Uninstalling will delete all blockchain data and configuration. A fresh sync will be required if you reinstall.',

@@ -1,5 +1,6 @@
 import { sdk } from '../sdk'
 import { bchdConf, fullConfigSpec } from '../file-models/bchd.conf'
+import { storeJson } from '../file-models/store.json'
 
 export const configure = sdk.Action.withInput(
   'configure',
@@ -17,6 +18,7 @@ export const configure = sdk.Action.withInput(
 
   async ({ effects }) => {
     const conf = await bchdConf.read().once()
+    const store = await storeJson.read().once()
     return {
       zmqEnabled: true,
       txindex: true,
@@ -24,6 +26,8 @@ export const configure = sdk.Action.withInput(
       grpcEnabled: (conf?.grpclisten ?? '') !== '',
       dbcachesize: conf?.dbcachesize ?? 500,
       maxpeers: conf?.maxpeers ?? 125,
+      torEnabled: store?.torEnabled ?? false,
+      torIsolation: false,
     }
   },
 
@@ -32,6 +36,10 @@ export const configure = sdk.Action.withInput(
       grpclisten: input.grpcEnabled ? '0.0.0.0:8335' : '',
       dbcachesize: input.dbcachesize,
       maxpeers: input.maxpeers,
+    })
+    await storeJson.merge(effects, {
+      torEnabled: input.torEnabled,
+      torIsolation: input.torIsolation,
     })
     return null
   },

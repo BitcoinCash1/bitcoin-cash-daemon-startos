@@ -30,10 +30,15 @@ export const autoconfig = sdk.Action.withInput(
 
   async ({ effects, input }) => {
     // Split: INI fields go to bchd.conf, Tor fields go to store.json
-    const { torEnabled, torIsolation, zmqEnabled, txindex, prune, ...iniFields } = input as any
-    await bchdConf.merge(effects, iniFields)
+    const { torEnabled, torIsolation, zmqEnabled, txindex, prune, grpcEnabled, dbcachesize, maxpeers } = input as any
+    await bchdConf.merge(effects, {
+      grpclisten: grpcEnabled ? '0.0.0.0:8335' : '',
+      dbcachesize: dbcachesize ?? 500,
+      maxpeers: maxpeers ?? 125,
+    })
     await storeJson.merge(effects, {
       torEnabled: torEnabled ?? false,
+      torIsolation: torIsolation ?? false,
     })
   },
 )

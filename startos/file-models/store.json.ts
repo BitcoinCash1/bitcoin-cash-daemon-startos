@@ -7,6 +7,7 @@ export const shape = z.object({
   network: z.enum(['mainnet']).catch('mainnet'),
   fullySynced: z.boolean().catch(false),
   torEnabled: z.boolean().catch(false),
+  torIsolation: z.boolean().catch(false),
 })
 
 export const storeJson = FileHelper.json(

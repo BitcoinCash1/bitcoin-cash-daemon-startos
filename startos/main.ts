@@ -43,7 +43,9 @@ export const main = sdk.setupMain(async ({ effects }) => {
   if (torIp) {
     bchdArgs.push(`--proxy=${torIp}:9050`)
     bchdArgs.push(`--onion=${torIp}:9050`)
-    // TODO: Add torIsolation to store.json when Tor config action is ready
+    if (store?.torIsolation) {
+      bchdArgs.push('--torisolation')
+    }
   }
 
   if (grpcEnabled) {
@@ -53,9 +55,12 @@ export const main = sdk.setupMain(async ({ effects }) => {
   if (conf?.dbcachesize) {
     bchdArgs.push(`--dbcachesize=${conf.dbcachesize}`)
   }
-  if (conf?.maxpeers) {
+  if (conf?.maxpeers != null) {
     bchdArgs.push(`--maxpeers=${conf.maxpeers}`)
   }
+
+  // Disable TLS for RPC in container context
+  bchdArgs.push('--notls')
 
   const mounts = sdk.Mounts.of().mountVolume({
     volumeId: 'main',

@@ -28,19 +28,19 @@ export const fullConfigSpec = sdk.InputSpec.of({
   zmqEnabled: sdk.Value.toggle({
     name: 'ZMQ Notifications',
     description:
-      'BCHD uses gRPC pub/sub instead of ZMQ. This toggle is accepted for compatibility with dependent packages but has no effect.',
+      'BCHD does not support ZMQ. It uses gRPC pub/sub for real-time notifications instead. This toggle is accepted for compatibility with dependent packages but has no effect.',
     default: true,
   }),
   txindex: sdk.Value.toggle({
     name: 'Transaction Index',
     description:
-      'BCHD always maintains a full transaction index. This cannot be disabled.',
+      'BCHD always maintains a full transaction index (txindex). This toggle is accepted for compatibility but BCHD requires txindex to be enabled.',
     default: true,
   }),
   prune: sdk.Value.number({
     name: 'Prune (MB)',
     description:
-      'BCHD does not support block pruning. This field is accepted for compatibility but has no effect.',
+      'BCHD supports block pruning via a block-depth mechanism (not MB-based). This field is accepted for compatibility with dependent packages but has no effect. To enable pruning, use the BCHD config file directly.',
     required: false,
     default: null,
     min: 0,
@@ -51,22 +51,22 @@ export const fullConfigSpec = sdk.InputSpec.of({
   grpcEnabled: sdk.Value.toggle({
     name: 'gRPC API',
     description:
-      'Enable the gRPC API on port 8335. Provides modern API access, BIP 157/158 compact block filters, and pub/sub notifications.',
+      'Enable the gRPC API on port 8335. Provides modern API access, BIP 157/158 compact block filters (Neutrino), and pub/sub notifications.',
     default: true,
   }),
   dbcachesize: sdk.Value.number({
-    name: 'Database Cache (MB)',
-    description: 'RAM allocated to the UTXO database cache.',
+    name: 'Database Cache (MiB)',
+    description: 'Maximum size of the database cache in MiB. Higher values use more RAM but improve sync performance.',
     required: true,
     default: 500,
     min: 64,
     max: 16384,
     integer: true,
-    units: 'MB',
+    units: 'MiB',
   }),
   maxpeers: sdk.Value.number({
     name: 'Max Peers',
-    description: 'Maximum number of peer connections.',
+    description: 'Maximum number of inbound and outbound peer connections.',
     required: true,
     default: 125,
     min: 0,
@@ -84,7 +84,7 @@ export const fullConfigSpec = sdk.InputSpec.of({
   torIsolation: sdk.Value.toggle({
     name: 'Tor Stream Isolation',
     description:
-      'Use a separate Tor circuit for each peer connection. Provides stronger privacy at the cost of slightly slower connection establishment.',
+      'Use a separate Tor circuit for each peer connection (torisolation). Provides stronger privacy at the cost of slightly slower connection establishment.',
     default: false,
   }),
 })
