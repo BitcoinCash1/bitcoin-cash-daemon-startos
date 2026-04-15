@@ -1,7 +1,9 @@
-# ── Build BCHD from source ──────────────────────────────────────────
-FROM golang:1.23-bookworm AS build
+# ── Build BCHD from source (cross-compile natively via Go) ─────────
+FROM --platform=$BUILDPLATFORM golang:1.23-bookworm AS build
 
 ARG BCHD_VERSION=v0.21.1
+ARG TARGETOS
+ARG TARGETARCH
 
 RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates && \
     rm -rf /var/lib/apt/lists/*
@@ -10,9 +12,9 @@ WORKDIR /build
 RUN git clone --depth 1 --branch ${BCHD_VERSION} https://github.com/gcash/bchd.git
 
 WORKDIR /build/bchd
-RUN CGO_ENABLED=0 go build -o /usr/local/bin/bchd . && \
-    CGO_ENABLED=0 go build -o /usr/local/bin/bchctl ./cmd/bchctl && \
-    CGO_ENABLED=0 go build -o /usr/local/bin/gencerts ./cmd/gencerts
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -o /usr/local/bin/bchd . && \
+    CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -o /usr/local/bin/bchctl ./cmd/bchctl && \
+    CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -o /usr/local/bin/gencerts ./cmd/gencerts
 
 # ── Runtime ─────────────────────────────────────────────────────────
 FROM debian:bookworm-slim

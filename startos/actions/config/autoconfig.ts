@@ -26,7 +26,20 @@ export const autoconfig = sdk.Action.withInput(
       )
   },
 
-  async ({ effects }) => bchdConf.read().once(),
+  async ({ effects }) => {
+    const conf = await bchdConf.read().once()
+    const store = await storeJson.read().once()
+    return {
+      zmqEnabled: true,
+      txindex: true,
+      prune: null,
+      grpcEnabled: (conf?.grpclisten ?? '') !== '',
+      dbcachesize: conf?.dbcachesize ?? 500,
+      maxpeers: conf?.maxpeers ?? 125,
+      torEnabled: store?.torEnabled ?? false,
+      torIsolation: store?.torIsolation ?? false,
+    }
+  },
 
   async ({ effects, input }) => {
     // Split: INI fields go to bchd.conf, Tor fields go to store.json

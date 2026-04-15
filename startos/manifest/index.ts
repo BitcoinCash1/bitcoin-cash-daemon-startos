@@ -21,7 +21,6 @@ export const manifest = setupManifest({
     bchd: {
       source: { dockerBuild: {} },
       arch: ['x86_64', 'aarch64', 'riscv64'],
-      emulateMissingAs: 'x86_64',
     },
   },
   alerts: {
