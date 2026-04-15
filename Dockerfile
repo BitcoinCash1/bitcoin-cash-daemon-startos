@@ -5,11 +5,15 @@ ARG BCHD_VERSION=v0.21.1
 ARG TARGETOS
 ARG TARGETARCH
 
-RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates && \
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl tar && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build
-RUN git clone --depth 1 --branch ${BCHD_VERSION} https://github.com/gcash/bchd.git
+RUN curl -fL --retry 6 --retry-delay 5 --retry-all-errors \
+    -o /tmp/bchd.tar.gz "https://github.com/gcash/bchd/archive/refs/tags/${BCHD_VERSION}.tar.gz" && \
+    mkdir -p /build/bchd && \
+    tar -xzf /tmp/bchd.tar.gz --strip-components=1 -C /build/bchd && \
+    rm -f /tmp/bchd.tar.gz
 
 WORKDIR /build/bchd
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -o /usr/local/bin/bchd . && \
@@ -17,7 +21,7 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -o /usr/local/b
     CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -o /usr/local/bin/gencerts ./cmd/gencerts
 
 # ── Runtime ─────────────────────────────────────────────────────────
-FROM debian:bookworm-slim
+FROM debian:stable-slim
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends ca-certificates && \
