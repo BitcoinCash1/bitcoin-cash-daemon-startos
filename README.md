@@ -1,6 +1,5 @@
 <p align="center">
-  <img <img width="708" height="266" alt="image" src="https://github.com/user-attachments/assets/dda8918a-54a3-4be4-8f9b-df7f41651948" />
- alt="BCHD Logo" width="21%">
+  <img <img width="708" height="266" alt="image" src="https://github.com/user-attachments/assets/dda8918a-54a3-4be4-8f9b-df7f41651948" alt="BCHD Logo" width="21%">
 </p>
 
 # BCHD on StartOS
