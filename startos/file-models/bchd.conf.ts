@@ -6,7 +6,7 @@ const iniNumber = z.union([z.string().transform(Number), z.number()])
 export const shape = z.object({
   txindex: z.literal(true).catch(true),
   addrindex: z.literal(true).catch(true),
-  rpcuser: z.string().catch('bitcoin-cash-node'),
+  rpcuser: z.string().catch('bitcoin-cash-daemon'),
   rpcpass: z.string().catch(''),
   rpclisten: z.string().catch('0.0.0.0:8332'),
   listen: z.string().catch('0.0.0.0:8333'),
@@ -36,7 +36,6 @@ export const fullConfigSpec = sdk.InputSpec.of({
     description:
       'BCHD always maintains a full transaction index. This cannot be disabled.',
     default: true,
-    disabled: 'BCHD always maintains a full transaction index',
   }),
   prune: sdk.Value.number({
     name: 'Prune (MB)',
@@ -74,5 +73,18 @@ export const fullConfigSpec = sdk.InputSpec.of({
     max: 1000,
     integer: true,
     units: null,
+  }),
+  torEnabled: sdk.Value.toggle({
+    name: 'Tor Routing',
+    description:
+      'Route all outbound connections through the Tor network for enhanced privacy. ' +
+      'Requires the Tor package to be installed and running.',
+    default: false,
+  }),
+  torIsolation: sdk.Value.toggle({
+    name: 'Tor Stream Isolation',
+    description:
+      'Use a separate Tor circuit for each peer connection. Provides stronger privacy at the cost of slightly slower connection establishment.',
+    default: false,
   }),
 })

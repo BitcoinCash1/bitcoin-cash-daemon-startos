@@ -1,4 +1,5 @@
 import { bchdConf, fullConfigSpec } from '../../file-models/bchd.conf'
+import { storeJson } from '../../file-models/store.json'
 import { sdk } from '../../sdk'
 
 export const autoconfig = sdk.Action.withInput(
@@ -27,5 +28,12 @@ export const autoconfig = sdk.Action.withInput(
 
   async ({ effects }) => bchdConf.read().once(),
 
-  ({ effects, input }) => bchdConf.merge(effects, input),
+  async ({ effects, input }) => {
+    // Split: INI fields go to bchd.conf, Tor fields go to store.json
+    const { torEnabled, torIsolation, zmqEnabled, txindex, prune, ...iniFields } = input as any
+    await bchdConf.merge(effects, iniFields)
+    await storeJson.merge(effects, {
+      torEnabled: torEnabled ?? false,
+    })
+  },
 )

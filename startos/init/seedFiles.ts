@@ -15,8 +15,9 @@ export const seedFiles = sdk.setupOnInit(async (effects) => {
       password += chars[b % chars.length]
     }
     await storeJson.merge(effects, {
-      rpcUser: 'bitcoin-cash-node',
+      rpcUser: 'bitcoin-cash-daemon',
       rpcPassword: password,
+      torEnabled: false,
     })
   }
 

@@ -8,10 +8,25 @@ export const main = sdk.setupMain(async ({ effects }) => {
 
   const conf = await bchdConf.read().const(effects)
   const store = await storeJson.read().once()
-  const rpcUser = store?.rpcUser ?? 'bitcoin-cash-node'
+  const rpcUser = store?.rpcUser ?? 'bitcoin-cash-daemon'
   const rpcPassword = store?.rpcPassword ?? ''
+  const torEnabled = store?.torEnabled ?? false
 
   const grpcEnabled = (conf?.grpclisten ?? '') !== ''
+
+  // Tor — get container IP (restarts BCHD if it changes)
+  const torIp = torEnabled
+    ? await sdk.getContainerIp(effects, { packageId: 'tor' }).const()
+    : null
+
+  // Track Tor running status dynamically
+  let torRunning = false
+  if (torIp) {
+    sdk.getStatus(effects, { packageId: 'tor' }).onChange((status) => {
+      torRunning = status?.desired.main === 'running'
+      return { cancel: false }
+    })
+  }
 
   const bchdArgs: string[] = [
     `--configfile=${rootDir}/bchd.conf`,
@@ -23,6 +38,13 @@ export const main = sdk.setupMain(async ({ effects }) => {
     `--rpclisten=0.0.0.0:${rpcPort}`,
     `--listen=0.0.0.0:8333`,
   ]
+
+  // Tor proxy args
+  if (torIp) {
+    bchdArgs.push(`--proxy=${torIp}:9050`)
+    bchdArgs.push(`--onion=${torIp}:9050`)
+    // TODO: Add torIsolation to store.json when Tor config action is ready
+  }
 
   if (grpcEnabled) {
     bchdArgs.push('--grpclisten=0.0.0.0:8335')
@@ -160,5 +182,40 @@ export const main = sdk.setupMain(async ({ effects }) => {
         },
       },
       requires: ['primary'],
+    })
+    .addHealthCheck('tor', {
+      ready: {
+        display: 'Tor',
+        fn: () => {
+          if (!torEnabled)
+            return { result: 'disabled' as const, message: 'Tor routing is disabled in config' }
+          if (!torIp)
+            return { result: 'disabled' as const, message: 'Tor is not installed' }
+          if (!torRunning)
+            return { result: 'disabled' as const, message: 'Tor is not running' }
+          return {
+            result: 'success' as const,
+            message: 'All connections routed through Tor',
+          }
+        },
+      },
+      requires: [],
+    })
+    .addHealthCheck('clearnet', {
+      ready: {
+        display: 'Clearnet',
+        fn: () => {
+          if (torEnabled && torIp)
+            return {
+              result: 'success' as const,
+              message: 'Outbound via Tor proxy — clearnet peers still reachable',
+            }
+          return {
+            result: 'success' as const,
+            message: 'Direct clearnet connections',
+          }
+        },
+      },
+      requires: [],
     })
 })
