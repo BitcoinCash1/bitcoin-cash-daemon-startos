@@ -50,8 +50,8 @@ export const main = sdk.setupMain(async ({ effects }) => {
     bchdArgs.push('--grpclisten=0.0.0.0:8335')
   }
 
-  if (conf?.dbcachesizemb) {
-    bchdArgs.push(`--dbcachesizemb=${conf.dbcachesizemb}`)
+  if (conf?.dbcachesize) {
+    bchdArgs.push(`--dbcachesize=${conf.dbcachesize}`)
   }
   if (conf?.maxpeers) {
     bchdArgs.push(`--maxpeers=${conf.maxpeers}`)

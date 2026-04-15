@@ -11,7 +11,7 @@ export const shape = z.object({
   rpclisten: z.string().catch('0.0.0.0:8332'),
   listen: z.string().catch('0.0.0.0:8333'),
   grpclisten: z.string().catch(''),
-  dbcachesizemb: iniNumber.catch(512),
+  dbcachesize: iniNumber.catch(500),
   maxpeers: iniNumber.catch(125),
 })
 
@@ -54,11 +54,11 @@ export const fullConfigSpec = sdk.InputSpec.of({
       'Enable the gRPC API on port 8335. Provides modern API access, BIP 157/158 compact block filters, and pub/sub notifications.',
     default: true,
   }),
-  dbcachesizemb: sdk.Value.number({
+  dbcachesize: sdk.Value.number({
     name: 'Database Cache (MB)',
     description: 'RAM allocated to the UTXO database cache.',
     required: true,
-    default: 512,
+    default: 500,
     min: 64,
     max: 16384,
     integer: true,

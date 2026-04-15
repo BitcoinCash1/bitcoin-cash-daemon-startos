@@ -2,7 +2,7 @@
   <img src="icon.svg" alt="BCHD Logo" width="21%">
 </p>
 
-# BCHD on StartOS
+# Bitcoin Cash Daemon (BCHD) for StartOS
 
 > **Upstream project:** <https://github.com/gcash/bchd>
 >
@@ -12,13 +12,12 @@
 
 [BCHD](https://github.com/gcash/bchd) is a full node implementation of the Bitcoin Cash protocol written in Go. It features a modern gRPC API, BIP 157/158 compact block filters (Neutrino light client support), and a performance-oriented architecture.
 
-**This package is a _flavor_ of Bitcoin Cash Node.** Installing BCHD replaces BCHN in-place — all dependent packages (Fulcrum BCH, BCH Explorer, mining pools) continue working without reconfiguration.
+**This is a standalone package** (`bitcoin-cash-daemon`) that runs alongside Bitcoin Cash Node (BCHN). Dependent packages (Fulcrum, Explorer, mining pools) can be configured to connect to either node.
 
 ---
 
 ## Table of Contents
 
-- [Flavor Concept](#flavor-concept)
 - [Image and Container Runtime](#image-and-container-runtime)
 - [Volume and Data Layout](#volume-and-data-layout)
 - [Installation and First-Run Flow](#installation-and-first-run-flow)
@@ -27,23 +26,12 @@
 - [Backups and Restore](#backups-and-restore)
 - [Health Checks](#health-checks)
 - [Dependencies](#dependencies)
-- [What BCHD Adds Over BCHN](#what-bchd-adds-over-bchn)
-- [Limitations and Differences](#limitations-and-differences)
+- [What BCHD Offers](#what-bchd-offers)
+- [Limitations and Differences vs BCHN](#limitations-and-differences-vs-bchn)
 - [Contributing](#contributing)
 - [Quick Reference for AI Consumers](#quick-reference-for-ai-consumers)
 
 ---
-
-## Flavor Concept
-
-BCHD uses the **same package ID** (`bitcoin-cash-node`) as BCHN. In StartOS, this means:
-
-- Installing BCHD **replaces** BCHN (and vice versa)
-- All packages that depend on `bitcoin-cash-node` keep working
-- The RPC interface (port 8332) and store.json format are identical
-- You choose ONE node implementation — BCHD **or** BCHN, not both
-
-**Why?** Both implementations serve the same purpose: they provide the BCH full node that Fulcrum, Explorer, and mining pools need. The flavor concept lets you choose your preferred implementation without breaking anything.
 
 ## Image and Container Runtime
 
@@ -69,12 +57,11 @@ StartOS-specific files:
 
 ## Installation and First-Run Flow
 
-1. **If BCHN is installed**: BCHD will replace it. Blockchain data is NOT transferred — BCHD must sync from scratch.
-2. Install BCHD from the StartOS marketplace
-3. Wait for Initial Block Download (several hours depending on hardware)
-4. All dependent packages (Fulcrum BCH, BCH Explorer, mining pools) reconnect automatically
+1. Install BCHD from the StartOS marketplace
+2. Wait for Initial Block Download (several hours depending on hardware)
+3. Configure dependent packages (Fulcrum, Explorer, mining pools) to connect to BCHD
 
-**Install alert:** BCHD is a **flavor** of Bitcoin Cash Node. Installing BCHD will REPLACE Bitcoin Cash Node (BCHN).
+**Note:** BCHD runs as a separate package from BCHN. You can run both simultaneously if desired.
 
 ## Configuration Management
 
@@ -133,7 +120,7 @@ From the **Actions** tab in StartOS, select **Configure** to adjust:
 
 None. BCHD **is** the node layer.
 
-## What BCHD Adds Over BCHN
+## What BCHD Offers
 
 | Feature             | BCHN     | BCHD          |
 | ------------------- | -------- | ------------- |
@@ -142,7 +129,7 @@ None. BCHD **is** the node layer.
 | **Language**        | C++      | Go            |
 | **Address Index**   | Optional | Always on     |
 
-## Limitations and Differences
+## Limitations and Differences vs BCHN
 
 1. **No ZMQ** — BCHD uses gRPC pub/sub instead of ZeroMQ for notifications. Dependent packages that hard-require ZMQ may need adaptation. The autoconfig accepts `zmqEnabled` for compatibility but it has no effect.
 2. **No pruning** — BCHD always maintains the full blockchain
@@ -160,8 +147,8 @@ For build instructions, see the [Makefile](Makefile).
 ## Quick Reference for AI Consumers
 
 ```yaml
-package_id: bitcoin-cash-node
-flavor_of: BCHN (same package ID, drop-in replacement)
+package_id: bitcoin-cash-daemon
+standalone: true (separate from bitcoin-cash-node/BCHN)
 upstream: gcash/bchd v0.21.1
 language: Go
 license: ISC

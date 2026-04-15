@@ -22,7 +22,7 @@ export const configure = sdk.Action.withInput(
       txindex: true,
       prune: null,
       grpcEnabled: (conf?.grpclisten ?? '') !== '',
-      dbcachesizemb: conf?.dbcachesizemb ?? 512,
+      dbcachesize: conf?.dbcachesize ?? 500,
       maxpeers: conf?.maxpeers ?? 125,
     }
   },
@@ -30,7 +30,7 @@ export const configure = sdk.Action.withInput(
   async ({ effects, input }) => {
     await bchdConf.merge(effects, {
       grpclisten: input.grpcEnabled ? '0.0.0.0:8335' : '',
-      dbcachesizemb: input.dbcachesizemb,
+      dbcachesize: input.dbcachesize,
       maxpeers: input.maxpeers,
     })
     return null
