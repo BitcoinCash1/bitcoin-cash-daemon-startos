@@ -24,6 +24,7 @@ export const configure = sdk.Action.withInput(
       grpcEnabled: (conf?.grpclisten ?? '') !== '',
       dbcachesize: conf?.dbcachesize ?? 500,
       maxpeers: conf?.maxpeers ?? 125,
+      peerbloomfilters: conf?.nopeerbloomfilters !== 1,
       torEnabled: store?.torEnabled ?? false,
       torIsolation: store?.torIsolation ?? false,
     }
@@ -32,6 +33,7 @@ export const configure = sdk.Action.withInput(
   async ({ effects, input }) => {
     await bchdConf.merge(effects, {
       grpclisten: input.grpcEnabled ? '0.0.0.0:8335' : '',
+      nopeerbloomfilters: input.peerbloomfilters ? 0 : 1,
       dbcachesize: input.dbcachesize,
       maxpeers: input.maxpeers,
     })

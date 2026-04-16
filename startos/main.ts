@@ -58,6 +58,9 @@ export const main = sdk.setupMain(async ({ effects }) => {
   if (conf?.maxpeers != null) {
     bchdArgs.push(`--maxpeers=${conf.maxpeers}`)
   }
+  if (conf?.nopeerbloomfilters === 1) {
+    bchdArgs.push('--nopeerbloomfilters')
+  }
 
   // Disable TLS for RPC in container context
   bchdArgs.push('--notls')

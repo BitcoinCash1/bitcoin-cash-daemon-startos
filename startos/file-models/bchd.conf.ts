@@ -11,6 +11,7 @@ export const shape = z.object({
   rpclisten: z.string().catch('0.0.0.0:8332'),
   listen: z.string().catch('0.0.0.0:8333'),
   grpclisten: z.string().catch(''),
+  nopeerbloomfilters: z.union([z.literal(1), z.literal(0)]).catch(0),
   dbcachesize: iniNumber.catch(500),
   maxpeers: iniNumber.catch(125),
 })
@@ -63,6 +64,12 @@ export const fullConfigSpec = sdk.InputSpec.of({
     max: 1000,
     integer: true,
     units: null,
+  }),
+  peerbloomfilters: sdk.Value.toggle({
+    name: 'Serve Bloom Filters (BIP37)',
+    description:
+      'Serve BIP37 bloom filters to peers. Useful for SPV wallets but can be a DoS vector on public-facing nodes. Disable if you do not need SPV wallet support.',
+    default: true,
   }),
   torEnabled: sdk.Value.toggle({
     name: 'Tor Routing',
