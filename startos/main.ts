@@ -148,13 +148,20 @@ export const main = sdk.setupMain(async ({ effects }) => {
             const info = JSON.parse(res.stdout.toString()) as {
               blocks: number
               headers: number
+              syncheight?: number
               verificationprogress: number
-              initialblockdownload: boolean
+              initialblockdownload?: boolean
             }
-            if (info.initialblockdownload) {
+            // BCHD doesn't have initialblockdownload — use verificationprogress and syncheight
+            const isSyncing =
+              info.initialblockdownload === true ||
+              info.verificationprogress < 0.999 ||
+              (info.syncheight != null && info.blocks < info.syncheight - 10)
+            if (isSyncing) {
               const pct = (info.verificationprogress * 100).toFixed(2)
+              const target = info.syncheight ?? info.headers
               return {
-                message: `Syncing blocks... ${pct}%`,
+                message: `Syncing blocks... ${pct}% (${info.blocks.toLocaleString()}/${target.toLocaleString()})`,
                 result: 'loading',
               }
             }
