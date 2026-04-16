@@ -30,8 +30,6 @@ export const autoconfig = sdk.Action.withInput(
     const conf = await bchdConf.read().once()
     const store = await storeJson.read().once()
     return {
-      zmqEnabled: true,
-      txindex: true,
       prune: null,
       grpcEnabled: (conf?.grpclisten ?? '') !== '',
       dbcachesize: conf?.dbcachesize ?? 500,
@@ -42,8 +40,7 @@ export const autoconfig = sdk.Action.withInput(
   },
 
   async ({ effects, input }) => {
-    // Split: INI fields go to bchd.conf, Tor fields go to store.json
-    const { torEnabled, torIsolation, zmqEnabled, txindex, prune, grpcEnabled, dbcachesize, maxpeers } = input as any
+    const { torEnabled, torIsolation, prune, grpcEnabled, dbcachesize, maxpeers } = input as any
     await bchdConf.merge(effects, {
       grpclisten: grpcEnabled ? '0.0.0.0:8335' : '',
       dbcachesize: dbcachesize ?? 500,

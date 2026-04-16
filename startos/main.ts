@@ -61,6 +61,9 @@ export const main = sdk.setupMain(async ({ effects }) => {
 
   // Disable TLS for RPC in container context
   bchdArgs.push('--notls')
+  // Point to generated certs (BCHD requires them even with --notls for P2P listener)
+  bchdArgs.push(`--rpccert=${rootDir}/rpc.cert`)
+  bchdArgs.push(`--rpckey=${rootDir}/rpc.key`)
 
   const mounts = sdk.Mounts.of().mountVolume({
     volumeId: 'main',
@@ -75,6 +78,12 @@ export const main = sdk.setupMain(async ({ effects }) => {
     mounts,
     'bchd-sub',
   )
+
+  // Generate TLS certs if missing (BCHD needs them even with --notls)
+  await bchdSub.exec([
+    'sh', '-c',
+    `test -f ${rootDir}/rpc.cert || gencerts --directory=${rootDir} --force`,
+  ])
 
   async function rpc(...args: string[]) {
     return bchdSub.exec([

@@ -25,28 +25,18 @@ export const bchdConf = FileHelper.ini(
 
 // Config spec for user-facing action and autoconfig
 export const fullConfigSpec = sdk.InputSpec.of({
-  zmqEnabled: sdk.Value.toggle({
-    name: 'ZMQ Notifications',
-    description:
-      'BCHD does not support ZMQ. It uses gRPC pub/sub for real-time notifications instead. This toggle is accepted for compatibility with dependent packages but has no effect.',
-    default: true,
-  }),
-  txindex: sdk.Value.toggle({
-    name: 'Transaction Index',
-    description:
-      'BCHD always maintains a full transaction index (txindex). This toggle is accepted for compatibility but BCHD requires txindex to be enabled.',
-    default: true,
-  }),
   prune: sdk.Value.number({
-    name: 'Prune (MB)',
+    name: 'Prune Target',
     description:
-      'BCHD supports block pruning via a block-depth mechanism (not MB-based). This field is accepted for compatibility with dependent packages but has no effect. To enable pruning, use the BCHD config file directly.',
+      'Limit blockchain storage (MB). 0 = disabled. Min 550 MB when enabled. Incompatible with txindex.',
     required: false,
     default: null,
     min: 0,
-    max: 0,
+    max: null,
     integer: true,
     units: 'MB',
+    placeholder: '0 (disabled)',
+    warning: 'Enabling pruning disables the transaction index.',
   }),
   grpcEnabled: sdk.Value.toggle({
     name: 'gRPC API',

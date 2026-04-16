@@ -20,14 +20,12 @@ export const configure = sdk.Action.withInput(
     const conf = await bchdConf.read().once()
     const store = await storeJson.read().once()
     return {
-      zmqEnabled: true,
-      txindex: true,
       prune: null,
       grpcEnabled: (conf?.grpclisten ?? '') !== '',
       dbcachesize: conf?.dbcachesize ?? 500,
       maxpeers: conf?.maxpeers ?? 125,
       torEnabled: store?.torEnabled ?? false,
-      torIsolation: false,
+      torIsolation: store?.torIsolation ?? false,
     }
   },
 
