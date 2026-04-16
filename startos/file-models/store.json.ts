@@ -8,6 +8,7 @@ export const shape = z.object({
   fullySynced: z.boolean().catch(false),
   torEnabled: z.boolean().catch(false),
   torIsolation: z.boolean().catch(false),
+  pruneDepth: z.number().catch(0),
 })
 
 export const storeJson = FileHelper.json(

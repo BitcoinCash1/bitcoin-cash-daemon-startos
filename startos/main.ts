@@ -56,6 +56,18 @@ export const main = sdk.setupMain(async ({ effects }) => {
     bchdArgs.push('--grpclisten=0.0.0.0:8335')
   }
 
+  // BIP 157/158 compact block filters
+  if (conf?.nocfilters === 1) {
+    bchdArgs.push('--nocfilters')
+  }
+
+  // Pruning
+  const pruneDepth = store?.pruneDepth ?? 0
+  if (pruneDepth > 0) {
+    bchdArgs.push('--prune')
+    bchdArgs.push(`--prunedepth=${pruneDepth}`)
+  }
+
   if (conf?.dbcachesize) {
     bchdArgs.push(`--dbcachesize=${conf.dbcachesize}`)
   }

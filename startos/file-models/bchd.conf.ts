@@ -10,7 +10,8 @@ export const shape = z.object({
   rpcpass: z.string().catch(''),
   rpclisten: z.string().catch('0.0.0.0:8332'),
   listen: z.string().catch('0.0.0.0:8333'),
-  grpclisten: z.string().catch(''),
+  grpclisten: z.string().catch('0.0.0.0:8335'),
+  nocfilters: z.union([z.literal(1), z.literal(0)]).catch(0),
   nopeerbloomfilters: z.union([z.literal(1), z.literal(0)]).catch(0),
   dbcachesize: iniNumber.catch(500),
   maxpeers: iniNumber.catch(125),
@@ -33,22 +34,28 @@ export const fullConfigSpec = sdk.InputSpec.of({
     default: true,
   }),
   prune: sdk.Value.number({
-    name: 'Prune Target',
+    name: 'Prune Depth',
     description:
-      'Limit blockchain storage (MB). 0 = disabled. Min 550 MB when enabled. Incompatible with txindex.',
+      'Number of recent blocks to retain. 0 = disabled (keep full chain). Minimum 288 blocks when enabled. Incompatible with txindex.',
     required: false,
     default: 0,
     min: 0,
     max: null,
     integer: true,
-    units: 'MB',
+    units: 'blocks',
     placeholder: '0 (disabled)',
     warning: 'Enabling pruning disables the transaction index.',
   }),
   grpcEnabled: sdk.Value.toggle({
     name: 'gRPC API',
     description:
-      'Enable the gRPC API on port 8335. Provides modern API access, BIP 157/158 compact block filters (Neutrino), and pub/sub notifications.',
+      'Enable the gRPC API on port 8335. Provides modern API access and pub/sub notifications.',
+    default: true,
+  }),
+  cfindex: sdk.Value.toggle({
+    name: 'Compact Block Filters (BIP 157/158)',
+    description:
+      'Build and serve compact block filters (Neutrino). Required by light wallets using the BIP 157/158 protocol.',
     default: true,
   }),
   dbcachesize: sdk.Value.number({
