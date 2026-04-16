@@ -30,19 +30,26 @@ export const autoconfig = sdk.Action.withInput(
     const conf = await bchdConf.read().once()
     const store = await storeJson.read().once()
     return {
+      txindex: conf?.txindex === 1 || conf?.txindex === true,
       prune: null,
       grpcEnabled: (conf?.grpclisten ?? '') !== '',
       dbcachesize: conf?.dbcachesize ?? 500,
       maxpeers: conf?.maxpeers ?? 125,
+      peerbloomfilters: conf?.nopeerbloomfilters !== 1,
       torEnabled: store?.torEnabled ?? false,
       torIsolation: store?.torIsolation ?? false,
     }
   },
 
   async ({ effects, input }) => {
-    const { torEnabled, torIsolation, prune, grpcEnabled, dbcachesize, maxpeers } = input as any
+    const { torEnabled, torIsolation, prune, txindex, grpcEnabled, peerbloomfilters, dbcachesize, maxpeers } = input as any
+    // Prune/txindex interlock
+    const effectiveTxindex = prune && prune > 0 ? false : (txindex ?? true)
     await bchdConf.merge(effects, {
+      txindex: effectiveTxindex ? 1 : 0,
+      addrindex: effectiveTxindex ? 1 : 0,
       grpclisten: grpcEnabled ? '0.0.0.0:8335' : '',
+      nopeerbloomfilters: peerbloomfilters === false ? 1 : 0,
       dbcachesize: dbcachesize ?? 500,
       maxpeers: maxpeers ?? 125,
     })

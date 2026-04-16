@@ -31,13 +31,17 @@ export const main = sdk.setupMain(async ({ effects }) => {
   const bchdArgs: string[] = [
     `--configfile=${rootDir}/bchd.conf`,
     `--datadir=${rootDir}`,
-    `--txindex`,
-    `--addrindex`,
     `--rpcuser=${rpcUser}`,
     `--rpcpass=${rpcPassword}`,
     `--rpclisten=0.0.0.0:${rpcPort}`,
     `--listen=0.0.0.0:8333`,
   ]
+
+  // txindex / addrindex (conditional)
+  if (conf?.txindex === 1 || conf?.txindex === true) {
+    bchdArgs.push('--txindex')
+    bchdArgs.push('--addrindex')
+  }
 
   // Tor proxy args
   if (torIp) {

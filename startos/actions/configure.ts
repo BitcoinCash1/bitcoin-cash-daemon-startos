@@ -20,6 +20,7 @@ export const configure = sdk.Action.withInput(
     const conf = await bchdConf.read().once()
     const store = await storeJson.read().once()
     return {
+      txindex: conf?.txindex === 1 || conf?.txindex === true,
       prune: null,
       grpcEnabled: (conf?.grpclisten ?? '') !== '',
       dbcachesize: conf?.dbcachesize ?? 500,
@@ -31,7 +32,11 @@ export const configure = sdk.Action.withInput(
   },
 
   async ({ effects, input }) => {
+    // Prune/txindex interlock: enabling pruning disables txindex
+    const txindex = input.prune && input.prune > 0 ? false : input.txindex
     await bchdConf.merge(effects, {
+      txindex: txindex ? 1 : 0,
+      addrindex: txindex ? 1 : 0,
       grpclisten: input.grpcEnabled ? '0.0.0.0:8335' : '',
       nopeerbloomfilters: input.peerbloomfilters ? 0 : 1,
       dbcachesize: input.dbcachesize,

@@ -4,8 +4,8 @@ import { sdk } from '../sdk'
 const iniNumber = z.union([z.string().transform(Number), z.number()])
 
 export const shape = z.object({
-  txindex: z.literal(true).catch(true),
-  addrindex: z.literal(true).catch(true),
+  txindex: z.union([z.literal(1), z.literal(0), z.boolean()]).catch(1),
+  addrindex: z.union([z.literal(1), z.literal(0), z.boolean()]).catch(1),
   rpcuser: z.string().catch('bchd'),
   rpcpass: z.string().catch(''),
   rpclisten: z.string().catch('0.0.0.0:8332'),
@@ -26,6 +26,12 @@ export const bchdConf = FileHelper.ini(
 
 // Config spec for user-facing action and autoconfig
 export const fullConfigSpec = sdk.InputSpec.of({
+  txindex: sdk.Value.toggle({
+    name: 'Transaction Index',
+    description:
+      'Build a full transaction index. Required by Fulcrum and other indexers. Cannot be enabled with pruning.',
+    default: true,
+  }),
   prune: sdk.Value.number({
     name: 'Prune Target',
     description:
