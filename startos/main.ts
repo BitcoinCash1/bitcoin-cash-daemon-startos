@@ -8,7 +8,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
 
   const conf = await bchdConf.read().const(effects)
   const store = await storeJson.read().once()
-  const rpcUser = store?.rpcUser ?? 'bitcoin-cash-daemon'
+  const rpcUser = store?.rpcUser ?? 'bchd'
   const rpcPassword = store?.rpcPassword ?? ''
   const torEnabled = store?.torEnabled ?? false
 

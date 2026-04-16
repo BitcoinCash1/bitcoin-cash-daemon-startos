@@ -1,7 +1,7 @@
 import { setupManifest } from '@start9labs/start-sdk'
 
 export const manifest = setupManifest({
-  id: 'bitcoin-cash-daemon',
+  id: 'bchd',
   title: 'Bitcoin Cash Daemon',
   license: 'ISC',
   packageRepo: 'https://github.com/BitcoinCash1/bitcoin-cash-daemon-startos',

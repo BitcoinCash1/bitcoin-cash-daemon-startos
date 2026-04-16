@@ -6,7 +6,7 @@ const iniNumber = z.union([z.string().transform(Number), z.number()])
 export const shape = z.object({
   txindex: z.literal(true).catch(true),
   addrindex: z.literal(true).catch(true),
-  rpcuser: z.string().catch('bitcoin-cash-daemon'),
+  rpcuser: z.string().catch('bchd'),
   rpcpass: z.string().catch(''),
   rpclisten: z.string().catch('0.0.0.0:8332'),
   listen: z.string().catch('0.0.0.0:8333'),
