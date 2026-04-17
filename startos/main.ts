@@ -8,9 +8,10 @@ export const main = sdk.setupMain(async ({ effects }) => {
 
   const conf = await bchdConf.read().const(effects)
   const store = await storeJson.read().once()
-  const rpcUser = store?.rpcUser ?? 'bchd'
-  const rpcPassword = store?.rpcPassword ?? ''
-  const torEnabled = store?.torEnabled ?? false
+  const activeCred = store?.rpcCredentials?.[0]
+  const rpcUser = activeCred?.username ?? store?.rpcUser ?? 'bchd'
+  const rpcPassword = activeCred?.password ?? store?.rpcPassword ?? ''
+  const torEnabled = store?.torEnabled ?? true
 
   const grpcEnabled = (conf?.grpclisten ?? '') !== ''
 
@@ -149,24 +150,38 @@ export const main = sdk.setupMain(async ({ effects }) => {
               blocks: number
               headers: number
               syncheight?: number
-              verificationprogress: number
+              mediantime?: number
+              verificationprogress?: number
               initialblockdownload?: boolean
             }
-            // BCHD doesn't have initialblockdownload — use verificationprogress and syncheight
+            // BCHD omits verificationprogress & syncheight from JSON when
+            // they are zero (Go omitempty). In JS, undefined < 0.999 is
+            // false, so we must default to 0 to avoid a false "synced".
+            const vp = info.verificationprogress ?? 0
+            const syncHeight = info.syncheight ?? 0
+
+            // Median-time staleness: mediantime is the median of the last
+            // 11 blocks (~55 min behind for a fully-synced BCH node).
+            // If it is more than 2 hours behind wall-clock, still syncing.
+            const now = Math.floor(Date.now() / 1000)
+            const medianAge = info.mediantime ? now - info.mediantime : Infinity
+            const isStale = medianAge > 7200
+
             const isSyncing =
               info.initialblockdownload === true ||
-              info.verificationprogress < 0.999 ||
-              (info.syncheight != null && info.blocks < info.syncheight - 10)
+              vp < 0.999 ||
+              (syncHeight > 0 && info.blocks < syncHeight - 10) ||
+              isStale
             if (isSyncing) {
-              const pct = (info.verificationprogress * 100).toFixed(2)
-              const target = info.syncheight ?? info.headers
+              const pct = (vp * 100).toFixed(2)
+              const target = syncHeight > 0 ? syncHeight : info.headers
               return {
                 message: `Syncing blocks... ${pct}% (${info.blocks.toLocaleString()}/${target.toLocaleString()})`,
                 result: 'loading',
               }
             }
             return {
-              message: `Synced — block ${info.blocks}`,
+              message: `Synced — block ${info.blocks.toLocaleString()}`,
               result: 'success',
             }
           } catch {

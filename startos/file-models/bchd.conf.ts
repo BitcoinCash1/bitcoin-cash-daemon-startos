@@ -14,7 +14,10 @@ export const shape = z.object({
   nocfilters: z.union([z.literal(1), z.literal(0)]).catch(0),
   nopeerbloomfilters: z.union([z.literal(1), z.literal(0)]).catch(0),
   dbcachesize: iniNumber.catch(500),
+  dbflushinterval: iniNumber.catch(1800),
   maxpeers: iniNumber.catch(125),
+  excessiveblocksize: iniNumber.catch(32000000),
+  minrelaytxfee: z.union([z.string().transform(Number), z.number()]).catch(0.00001),
 })
 
 export const bchdConf = FileHelper.ini(
@@ -52,21 +55,28 @@ export const fullConfigSpec = sdk.InputSpec.of({
       'Enable the gRPC API on port 8335. Provides modern API access and pub/sub notifications.',
     default: true,
   }),
-  cfindex: sdk.Value.toggle({
-    name: 'Compact Block Filters (BIP 157/158)',
-    description:
-      'Build and serve compact block filters (Neutrino). Required by light wallets using the BIP 157/158 protocol.',
-    default: true,
-  }),
   dbcachesize: sdk.Value.number({
     name: 'Database Cache (MiB)',
-    description: 'Maximum size of the database cache in MiB. Higher values use more RAM but improve sync performance.',
+    description:
+      'Size of the in-memory database cache. Larger values speed up IBD and general operation at the cost of RAM usage.',
     required: true,
     default: 500,
     min: 64,
     max: 16384,
     integer: true,
     units: 'MiB',
+  }),
+  dbflushinterval: sdk.Value.number({
+    name: 'Database Flush Interval',
+    description:
+      'Seconds between database flushes. BCHD batches writes to its bolt key-value store for performance. Lower values flush more often (safer but slower), higher values batch more (faster but risk data on crash).',
+    required: true,
+    default: 1800,
+    min: 60,
+    max: 7200,
+    integer: true,
+    units: 'seconds',
+    placeholder: '1800',
   }),
   maxpeers: sdk.Value.number({
     name: 'Max Peers',
@@ -84,17 +94,46 @@ export const fullConfigSpec = sdk.InputSpec.of({
       'Serve BIP37 bloom filters to peers. Useful for SPV wallets but can be a DoS vector on public-facing nodes. Disable if you do not need SPV wallet support.',
     default: true,
   }),
+  cfindex: sdk.Value.toggle({
+    name: 'Compact Block Filters (BIP 157/158)',
+    description:
+      'Build and serve compact block filters (Neutrino). Required by light wallets using the BIP 157/158 protocol.',
+    default: true,
+  }),
   torEnabled: sdk.Value.toggle({
     name: 'Tor Routing',
     description:
       'Route all outbound connections through the Tor network for enhanced privacy. ' +
       'Requires the Tor package to be installed and running.',
-    default: false,
+    default: true,
   }),
   torIsolation: sdk.Value.toggle({
     name: 'Tor Stream Isolation',
     description:
       'Use a separate Tor circuit for each peer connection (torisolation). Provides stronger privacy at the cost of slightly slower connection establishment.',
-    default: false,
+    default: true,
+  }),
+  excessiveblocksize: sdk.Value.number({
+    name: 'Excessive Block Size',
+    description: 'Max accepted block size in bytes. BCHD default: 32000000 (32 MB).',
+    required: false,
+    default: null,
+    min: 1000000,
+    max: null,
+    integer: true,
+    units: 'bytes',
+    placeholder: '32000000',
+  }),
+  minrelaytxfee: sdk.Value.number({
+    name: 'Minimum Relay Fee',
+    description: 'Minimum fee rate (BCH/kB) for relaying transactions.',
+    required: false,
+    default: null,
+    min: 0,
+    max: null,
+    integer: false,
+    units: 'BCH/kB',
+    placeholder: '0.00001',
+    step: 0.000001,
   }),
 })

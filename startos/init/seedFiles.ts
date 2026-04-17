@@ -17,7 +17,18 @@ export const seedFiles = sdk.setupOnInit(async (effects) => {
     await storeJson.merge(effects, {
       rpcUser: 'bchd',
       rpcPassword: password,
-      torEnabled: false,
+      rpcCredentials: [{ name: 'Default', username: 'bchd', password }],
+      torEnabled: true,
+      torIsolation: true,
+    })
+  } else if (!existing.rpcCredentials?.length) {
+    // Migrate: existing install without rpcCredentials array
+    await storeJson.merge(effects, {
+      rpcCredentials: [{
+        name: 'Default',
+        username: existing.rpcUser ?? 'bchd',
+        password: existing.rpcPassword,
+      }],
     })
   }
 
