@@ -34,12 +34,12 @@ export const autoconfig = sdk.Action.withInput(
       prune: 0,
       grpcEnabled: (conf?.grpclisten ?? '') !== '',
       cfindex: conf?.nocfilters !== 1,
-      dbcachesize: conf?.dbcachesize ?? 500,
+      dbcachesize: conf?.dbcachesize ?? 2048,
       dbflushinterval: conf?.dbflushinterval ?? 1800,
       maxpeers: conf?.maxpeers ?? 125,
       peerbloomfilters: conf?.nopeerbloomfilters !== 1,
-      torEnabled: store?.torEnabled ?? true,
-      torIsolation: store?.torIsolation ?? true,
+      torEnabled: store?.torEnabled ?? false,
+      torIsolation: store?.torIsolation ?? false,
       excessiveblocksize: conf?.excessiveblocksize ?? 32000000,
       minrelaytxfee: conf?.minrelaytxfee ?? 0.00001,
     }
@@ -55,7 +55,7 @@ export const autoconfig = sdk.Action.withInput(
       grpclisten: grpcEnabled ? '0.0.0.0:8335' : '',
       nocfilters: cfindex === false ? 1 : 0,
       nopeerbloomfilters: peerbloomfilters === false ? 1 : 0,
-      dbcachesize: dbcachesize ?? 500,
+      dbcachesize: dbcachesize ?? 2048,
       dbflushinterval: dbflushinterval ?? 1800,
       maxpeers: maxpeers ?? 125,
     }
@@ -63,8 +63,8 @@ export const autoconfig = sdk.Action.withInput(
     if (minrelaytxfee != null) confPatch.minrelaytxfee = minrelaytxfee
     await bchdConf.merge(effects, confPatch as any)
     await storeJson.merge(effects, {
-      torEnabled: torEnabled ?? true,
-      torIsolation: torIsolation ?? true,
+      torEnabled: torEnabled ?? false,
+      torIsolation: torIsolation ?? false,
       pruneDepth: prune && prune > 0 ? Math.max(prune, 288) : 0,
     })
   },

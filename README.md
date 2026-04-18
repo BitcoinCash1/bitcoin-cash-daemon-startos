@@ -61,6 +61,8 @@ StartOS-specific files:
 2. Wait for Initial Block Download (several hours depending on hardware)
 3. Configure dependent packages (Fulcrum, Explorer, mining pools) to connect to BCHD
 
+For the fastest initial sync, keep Tor disabled until the chain is fully caught up. Enabling Tor and Tor isolation during IBD materially reduces peer throughput.
+
 **Note:** BCHD runs as a separate package from BCHN. You can run both simultaneously if desired.
 
 ## Configuration Management
@@ -74,8 +76,9 @@ From the **Actions** tab in StartOS, select **Configure** to adjust:
 | Setting          | Default | Description                                      |
 | ---------------- | ------- | ------------------------------------------------ |
 | gRPC API         | On      | Enable gRPC on port 8335 (BIP 157/158, pub/sub)  |
-| Database Cache   | 512 MB  | RAM allocated to UTXO database cache             |
+| Database Cache   | 2048 MB | RAM allocated to UTXO database cache             |
 | Max Peers        | 125     | Maximum peer connections                         |
+| Tor Routing      | Off     | Disabled by default for faster initial sync      |
 
 ### Always-On Features
 

@@ -28,7 +28,7 @@ export const nodeSettings = sdk.Action.withInput(
       txindex: conf?.txindex === 1 || conf?.txindex === true,
       prune: 0,
       grpcEnabled: (conf?.grpclisten ?? '') !== '',
-      dbcachesize: conf?.dbcachesize ?? 500,
+      dbcachesize: conf?.dbcachesize ?? 2048,
       dbflushinterval: conf?.dbflushinterval ?? 1800,
     }
   },

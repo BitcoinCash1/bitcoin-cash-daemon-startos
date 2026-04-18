@@ -13,7 +13,7 @@ export const shape = z.object({
   grpclisten: z.string().catch('0.0.0.0:8335'),
   nocfilters: z.union([z.literal(1), z.literal(0)]).catch(0),
   nopeerbloomfilters: z.union([z.literal(1), z.literal(0)]).catch(0),
-  dbcachesize: iniNumber.catch(500),
+  dbcachesize: iniNumber.catch(2048),
   dbflushinterval: iniNumber.catch(1800),
   maxpeers: iniNumber.catch(125),
   excessiveblocksize: iniNumber.catch(32000000),
@@ -60,7 +60,7 @@ export const fullConfigSpec = sdk.InputSpec.of({
     description:
       'Size of the in-memory database cache. Larger values speed up IBD and general operation at the cost of RAM usage.',
     required: true,
-    default: 500,
+    default: 2048,
     min: 64,
     max: 16384,
     integer: true,

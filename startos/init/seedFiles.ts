@@ -18,8 +18,8 @@ export const seedFiles = sdk.setupOnInit(async (effects) => {
       rpcUser: 'bchd',
       rpcPassword: password,
       rpcCredentials: [{ name: 'Default', username: 'bchd', password }],
-      torEnabled: true,
-      torIsolation: true,
+      torEnabled: false,
+      torIsolation: false,
     })
   } else if (!existing.rpcCredentials?.length) {
     // Migrate: existing install without rpcCredentials array
@@ -33,5 +33,5 @@ export const seedFiles = sdk.setupOnInit(async (effects) => {
   }
 
   // Seed default bchd.conf
-  await bchdConf.merge(effects, {})
+  await bchdConf.merge(effects, { dbcachesize: 2048 })
 })
