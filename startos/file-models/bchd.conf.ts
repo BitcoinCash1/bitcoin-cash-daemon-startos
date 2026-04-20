@@ -110,6 +110,12 @@ export const fullConfigSpec = sdk.InputSpec.of({
     minLength: 1,
     maxLength: null,
   }),
+  onionOnly: sdk.Value.toggle({
+    name: 'Onion-Only Mode',
+    description:
+      'Force peer connections to Tor only (equivalent to onlynet=onion). Disabled by default so Tor and clearnet can coexist.',
+    default: false,
+  }),
   peerbloomfilters: sdk.Value.toggle({
     name: 'Serve Bloom Filters (BIP37)',
     description:

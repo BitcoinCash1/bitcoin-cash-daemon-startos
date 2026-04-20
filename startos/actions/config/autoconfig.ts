@@ -1,4 +1,4 @@
-import { bchdConf, fullConfigSpec } from '../../file-models/bchd.conf'
+import { ALL_ONLYNETS, bchdConf, fullConfigSpec, OnlynetKey } from '../../file-models/bchd.conf'
 import { storeJson } from '../../file-models/store.json'
 import { sdk } from '../../sdk'
 
@@ -29,6 +29,8 @@ export const autoconfig = sdk.Action.withInput(
   async ({ effects }) => {
     const conf = await bchdConf.read().once()
     const store = await storeJson.read().once()
+    const onlynetFromConf = (conf?.onlynet as string[] | undefined)?.filter(Boolean) ?? []
+    const onionOnly = onlynetFromConf.length > 0 && onlynetFromConf.every((n) => n === 'onion')
     return {
       txindex: conf?.txindex === 1 || conf?.txindex === true,
       prune: store?.pruneDepth ?? 0,
@@ -37,6 +39,8 @@ export const autoconfig = sdk.Action.withInput(
       dbcachesize: conf?.dbcachesize ?? 2048,
       dbflushinterval: conf?.dbflushinterval ?? 1800,
       maxpeers: conf?.maxpeers ?? 125,
+      onlynet: onlynetFromConf.length > 0 ? (onlynetFromConf as OnlynetKey[]) : [...ALL_ONLYNETS],
+      onionOnly,
       peerbloomfilters: conf?.nopeerbloomfilters !== 1,
       torEnabled: store?.torEnabled ?? true,
       torIsolation: store?.torIsolation ?? true,
@@ -46,7 +50,10 @@ export const autoconfig = sdk.Action.withInput(
   },
 
   async ({ effects, input }) => {
-    const { torEnabled, torIsolation, prune, txindex, grpcEnabled, cfindex, peerbloomfilters, dbcachesize, dbflushinterval, maxpeers, excessiveblocksize, minrelaytxfee } = input as any
+    const { torEnabled, torIsolation, prune, txindex, grpcEnabled, cfindex, onlynet, onionOnly, peerbloomfilters, dbcachesize, dbflushinterval, maxpeers, excessiveblocksize, minrelaytxfee } = input as any
+    const onlynetList = (onlynet as string[] | undefined)?.filter(Boolean) ?? []
+    const allSelected = ['ipv4', 'ipv6', 'onion'].every((n) => onlynetList.includes(n))
+    const writeOnlynet = onionOnly ? ['onion'] : (onlynetList.length > 0 && !allSelected ? onlynetList : undefined)
     // Prune/txindex interlock
     const effectiveTxindex = prune && prune > 0 ? false : (txindex ?? true)
     const confPatch: Record<string, unknown> = {
@@ -54,6 +61,7 @@ export const autoconfig = sdk.Action.withInput(
       addrindex: effectiveTxindex ? 1 : 0,
       grpclisten: grpcEnabled ? '0.0.0.0:8335' : '',
       nocfilters: cfindex === false ? 1 : 0,
+      onlynet: writeOnlynet,
       nopeerbloomfilters: peerbloomfilters === false ? 1 : 0,
       dbcachesize: dbcachesize ?? 2048,
       dbflushinterval: dbflushinterval ?? 1800,

@@ -17,6 +17,7 @@ export const rpcPeersSettings = sdk.Action.withInput(
   fullConfigSpec.filter({
     maxpeers: true,
     onlynet: true,
+    onionOnly: true,
     peerbloomfilters: true,
     cfindex: true,
     torEnabled: true,
@@ -30,10 +31,12 @@ export const rpcPeersSettings = sdk.Action.withInput(
     const onlynet = onlynetFromConf.length > 0
       ? (onlynetFromConf as OnlynetKey[])
       : [...ALL_ONLYNETS]
+    const onionOnly = onlynetFromConf.length > 0 && onlynetFromConf.every((n) => n === 'onion')
 
     return {
       maxpeers: conf?.maxpeers ?? 125,
       onlynet,
+      onionOnly,
       peerbloomfilters: conf?.nopeerbloomfilters !== 1,
       cfindex: conf?.nocfilters !== 1,
       torEnabled: store?.torEnabled ?? true,
@@ -44,7 +47,9 @@ export const rpcPeersSettings = sdk.Action.withInput(
   async ({ effects, input }: { effects: any, input: any }) => {
     const onlynetList = (input.onlynet as string[] | undefined)?.filter(Boolean) ?? []
     const allSelected = ALL_ONLYNETS.every((n) => onlynetList.includes(n))
-    const writeOnlynet = onlynetList.length > 0 && !allSelected ? onlynetList : undefined
+    const writeOnlynet = input.onionOnly
+      ? ['onion']
+      : (onlynetList.length > 0 && !allSelected ? onlynetList : undefined)
 
     await bchdConf.merge(effects, {
       maxpeers: input.maxpeers,
