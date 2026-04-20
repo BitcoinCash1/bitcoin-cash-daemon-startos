@@ -14,6 +14,8 @@ export const main = sdk.setupMain(async ({ effects }) => {
   const torEnabled = store?.torEnabled ?? true
 
   const grpcEnabled = (conf?.grpclisten ?? '') !== ''
+  const onlynetList = ((conf?.onlynet as string[] | undefined) ?? []).filter(Boolean)
+  const onionOnly = onlynetList.length > 0 && onlynetList.every((n) => n === 'onion')
 
   // Tor — get container IP (restarts BCHD if it changes)
   const torIp = torEnabled
@@ -38,19 +40,28 @@ export const main = sdk.setupMain(async ({ effects }) => {
     `--listen=0.0.0.0:8333`,
   ]
 
+  // Apply onlynet restrictions only when explicitly narrowed from default-all.
+  for (const net of onlynetList) {
+    bchdArgs.push(`--onlynet=${net}`)
+  }
+
   // txindex / addrindex (conditional)
   if (conf?.txindex === 1 || conf?.txindex === true) {
     bchdArgs.push('--txindex')
     bchdArgs.push('--addrindex')
   }
 
-  // Tor proxy args
-  if (torIp) {
+  const fullySynced = store?.fullySynced ?? false
+
+  // Tor proxy args — skipped during IBD to avoid crippling sync speed
+  if (torIp && fullySynced) {
     bchdArgs.push(`--proxy=${torIp}:9050`)
     bchdArgs.push(`--onion=${torIp}:9050`)
     if (store?.torIsolation) {
       bchdArgs.push('--torisolation')
     }
+  } else if (torEnabled && !fullySynced) {
+    console.log('Tor routing deferred until initial block download completes')
   }
 
   if (grpcEnabled) {
@@ -242,15 +253,24 @@ export const main = sdk.setupMain(async ({ effects }) => {
       ready: {
         display: 'Tor',
         fn: () => {
+          if (onionOnly && !torEnabled)
+            return { result: 'failure' as const, message: 'Invalid config: onlynet=onion requires Tor routing enabled' }
           if (!torEnabled)
             return { result: 'disabled' as const, message: 'Tor routing is disabled in config' }
           if (!torIp)
             return { result: 'disabled' as const, message: 'Tor is not installed' }
           if (!torRunning)
             return { result: 'disabled' as const, message: 'Tor is not running' }
+          if (!fullySynced)
+            return {
+              result: 'loading' as const,
+              message: 'Tor routing will activate after initial block download',
+            }
           return {
             result: 'success' as const,
-            message: 'All connections routed through Tor',
+            message: store?.torIsolation
+              ? 'Tor proxy active with stream isolation'
+              : 'Tor proxy active',
           }
         },
       },
@@ -260,11 +280,18 @@ export const main = sdk.setupMain(async ({ effects }) => {
       ready: {
         display: 'Clearnet',
         fn: () => {
-          if (torEnabled && torIp)
+          if (onionOnly) {
+            return {
+              result: 'disabled' as const,
+              message: 'Clearnet disabled — onlynet=onion is set',
+            }
+          }
+          if (torEnabled && torIp) {
             return {
               result: 'success' as const,
-              message: 'Outbound via Tor proxy — clearnet peers still reachable',
+              message: 'Outbound via Tor proxy with clearnet still allowed',
             }
+          }
           return {
             result: 'success' as const,
             message: 'Direct clearnet connections',

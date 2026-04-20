@@ -18,8 +18,8 @@ export const seedFiles = sdk.setupOnInit(async (effects) => {
       rpcUser: 'bchd',
       rpcPassword: password,
       rpcCredentials: [{ name: 'Default', username: 'bchd', password }],
-      torEnabled: false,
-      torIsolation: false,
+      torEnabled: true,
+      torIsolation: true,
     })
   } else if (!existing.rpcCredentials?.length) {
     // Migrate: existing install without rpcCredentials array

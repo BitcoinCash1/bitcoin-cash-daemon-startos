@@ -24,9 +24,10 @@ export const nodeSettings = sdk.Action.withInput(
 
   async ({ effects }) => {
     const conf = await bchdConf.read().once()
+    const store = await storeJson.read().once()
     return {
       txindex: conf?.txindex === 1 || conf?.txindex === true,
-      prune: 0,
+      prune: store?.pruneDepth ?? 0,
       grpcEnabled: (conf?.grpclisten ?? '') !== '',
       dbcachesize: conf?.dbcachesize ?? 2048,
       dbflushinterval: conf?.dbflushinterval ?? 1800,

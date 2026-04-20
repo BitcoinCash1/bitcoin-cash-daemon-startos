@@ -2,6 +2,18 @@ import { FileHelper, z } from '@start9labs/start-sdk'
 import { sdk } from '../sdk'
 
 const iniNumber = z.union([z.string().transform(Number), z.number()])
+const iniStringArray = z
+  .union([z.array(z.string()), z.string().transform((s) => [s])])
+  .optional()
+  .catch(undefined)
+
+export const ONLYNET_VALUES = {
+  ipv4: 'IPv4',
+  ipv6: 'IPv6',
+  onion: 'Tor (.onion)',
+} as const
+export type OnlynetKey = keyof typeof ONLYNET_VALUES
+export const ALL_ONLYNETS = Object.keys(ONLYNET_VALUES) as OnlynetKey[]
 
 export const shape = z.object({
   txindex: z.union([z.literal(1), z.literal(0), z.boolean()]).catch(1),
@@ -16,6 +28,7 @@ export const shape = z.object({
   dbcachesize: iniNumber.catch(2048),
   dbflushinterval: iniNumber.catch(1800),
   maxpeers: iniNumber.catch(125),
+  onlynet: iniStringArray,
   excessiveblocksize: iniNumber.catch(32000000),
   minrelaytxfee: z.union([z.string().transform(Number), z.number()]).catch(0.00001),
 })
@@ -87,6 +100,15 @@ export const fullConfigSpec = sdk.InputSpec.of({
     max: 1000,
     integer: true,
     units: null,
+  }),
+  onlynet: sdk.Value.multiselect({
+    name: 'Allowed Networks',
+    description:
+      'Restrict outbound peer connections to selected network types. Leave all selected to allow all networks.',
+    default: ALL_ONLYNETS,
+    values: ONLYNET_VALUES,
+    minLength: 1,
+    maxLength: null,
   }),
   peerbloomfilters: sdk.Value.toggle({
     name: 'Serve Bloom Filters (BIP37)',
