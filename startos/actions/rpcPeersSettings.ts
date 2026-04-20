@@ -7,7 +7,7 @@ export const rpcPeersSettings = sdk.Action.withInput(
 
   async ({ effects }: { effects: any }) => ({
     name: 'RPC & Peers Settings',
-    description: 'Configure peer connections, bloom filters, compact block filters, and Tor routing.',
+    description: 'Configure peer connections, bloom filters, compact block filters, and Tor proxy behavior.',
     warning: null,
     allowedStatuses: 'any',
     group: 'Configuration',

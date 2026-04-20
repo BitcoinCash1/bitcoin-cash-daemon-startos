@@ -127,6 +127,15 @@ export const main = sdk.setupMain(async ({ effects }) => {
     ])
   }
 
+  async function grpcReady() {
+    const probe = await bchdSub.exec([
+      'sh',
+      '-c',
+      'if command -v nc >/dev/null 2>&1; then nc -z 127.0.0.1 8335; else ss -lnt | grep -q ":8335"; fi',
+    ])
+    return probe.exitCode === 0
+  }
+
   return sdk.Daemons.of(effects)
     .addDaemon('primary', {
       subcontainer: bchdSub,
@@ -249,14 +258,35 @@ export const main = sdk.setupMain(async ({ effects }) => {
       },
       requires: ['primary'],
     })
+    .addHealthCheck('grpc', {
+      ready: {
+        display: 'gRPC',
+        fn: async () => {
+          if (!grpcEnabled) {
+            return {
+              result: 'disabled' as const,
+              message: 'gRPC API is disabled in config',
+            }
+          }
+          try {
+            return await grpcReady()
+              ? { result: 'success' as const, message: 'gRPC API is listening on port 8335' }
+              : { result: 'loading' as const, message: 'gRPC API is enabled but not ready yet' }
+          } catch {
+            return { result: 'loading' as const, message: 'gRPC API is enabled but not ready yet' }
+          }
+        },
+      },
+      requires: ['primary'],
+    })
     .addHealthCheck('tor', {
       ready: {
-        display: 'Tor',
+        display: 'Tor Proxy',
         fn: () => {
           if (onionOnly && !torEnabled)
             return { result: 'failure' as const, message: 'Invalid config: onlynet=onion requires Tor routing enabled' }
           if (!torEnabled)
-            return { result: 'disabled' as const, message: 'Tor routing is disabled in config' }
+            return { result: 'disabled' as const, message: 'Tor proxy is disabled in config' }
           if (!torIp)
             return { result: 'disabled' as const, message: 'Tor is not installed' }
           if (!torRunning)
@@ -264,7 +294,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
           if (!fullySynced)
             return {
               result: 'loading' as const,
-              message: 'Tor routing will activate after initial block download',
+              message: 'Tor proxy is configured and will activate after initial sync',
             }
           return {
             result: 'success' as const,
@@ -286,15 +316,21 @@ export const main = sdk.setupMain(async ({ effects }) => {
               message: 'Clearnet disabled — onlynet=onion is set',
             }
           }
+          if (torEnabled && torIp && !fullySynced) {
+            return {
+              result: 'success' as const,
+              message: 'Direct clearnet peers active during initial sync',
+            }
+          }
           if (torEnabled && torIp) {
             return {
               result: 'success' as const,
-              message: 'Outbound via Tor proxy with clearnet still allowed',
+              message: 'Clearnet allowed (outbound peers routed via Tor proxy)',
             }
           }
           return {
             result: 'success' as const,
-            message: 'Direct clearnet connections',
+            message: 'Direct clearnet peers active',
           }
         },
       },

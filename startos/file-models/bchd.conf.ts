@@ -132,13 +132,13 @@ export const fullConfigSpec = sdk.InputSpec.of({
     name: 'Tor Routing',
     description:
       'Route all outbound connections through the Tor network for enhanced privacy. ' +
-      'Requires the Tor package to be installed and running.',
+      'Requires the Tor package to be installed and running. For faster IBD, Tor proxying is applied after initial sync.',
     default: true,
   }),
   torIsolation: sdk.Value.toggle({
     name: 'Tor Stream Isolation',
     description:
-      'Use a separate Tor circuit for each peer connection (torisolation). Provides stronger privacy at the cost of slightly slower connection establishment.',
+      'Use a separate Tor circuit for each peer connection (torisolation) when Tor proxying is active. Provides stronger privacy at the cost of slightly slower connection establishment.',
     default: true,
   }),
   excessiveblocksize: sdk.Value.number({
