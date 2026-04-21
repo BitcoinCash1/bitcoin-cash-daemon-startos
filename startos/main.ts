@@ -183,6 +183,13 @@ export const main = sdk.setupMain(async ({ effects }) => {
             if (chattrRes.exitCode !== 0) {
               console.warn(`nocow: chattr not applied for ${rootDir}; continuing startup`)
             }
+            // Strip any legacy `externalip[]=` lines from bchd.conf. BCHD
+            // rejects these at config parse; we now pass --externalip via CLI
+            // from the list maintained in store.json by watchHosts.
+            await bchdSub.exec([
+              'sh', '-c',
+              `test -f ${rootDir}/bchd.conf && sed -i '/^externalip\\[\\]=/d' ${rootDir}/bchd.conf || true`,
+            ])
           } catch (err) {
             console.warn('nocow: unable to set NoCOW attributes; continuing startup', err)
           }
