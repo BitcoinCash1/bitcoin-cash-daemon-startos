@@ -13,7 +13,7 @@ export const shape = z.object({
   rpcUser: z.string().catch('bchd'),
   rpcPassword: z.string().catch(''),
   rpcCredentials: z.array(rpcCredentialShape).catch([]),
-  network: z.enum(['mainnet']).catch('mainnet'),
+  network: z.enum(['mainnet', 'chipnet', 'regtest']).catch('mainnet'),
   fullySynced: z.boolean().catch(false),
   torEnabled: z.boolean().catch(true),
   torIsolation: z.boolean().catch(true),
