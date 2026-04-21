@@ -26,7 +26,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
   const onlynetList = ((conf?.onlynet as string[] | undefined) ?? []).filter(Boolean)
   const onlynetActive = onlynetList.length > 0
   const onionOnly = onlynetActive && onlynetList.every((n) => n === 'onion')
-  const externalip = ((conf?.externalip as string[] | undefined) ?? []).filter(Boolean)
+  const externalip = (store?.externalip ?? []).filter(Boolean)
 
   // Read and clear reindex flags
   const reindexBlockchain = store?.reindexBlockchain ?? false

@@ -59,11 +59,8 @@ export const watchHosts = sdk.setupOnInit(async (effects) => {
     }
   }
 
-  await bchdConf.merge(
+  await storeJson.merge(
     effects,
-    {
-      externalip: externalip.length > 0 ? externalip : undefined,
-    },
-    { allowWriteAfterConst: true },
+    { externalip },
   )
 })

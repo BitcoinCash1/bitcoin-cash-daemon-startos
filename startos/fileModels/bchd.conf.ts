@@ -29,7 +29,6 @@ export const shape = z.object({
   dbflushinterval: iniNumber.catch(1800),
   maxpeers: iniNumber.catch(125),
   onlynet: iniStringArray,
-  externalip: iniStringArray,
   excessiveblocksize: iniNumber.catch(32000000),
   minrelaytxfee: z.union([z.string().transform(Number), z.number()]).catch(0.00001),
 })
