@@ -137,12 +137,6 @@ export const main = sdk.setupMain(async ({ effects }) => {
     'node-sub',
   )
 
-  // Generate TLS certs if missing (BCHD needs them even with --notls)
-  await bchdSub.exec([
-    'sh', '-c',
-    `test -f ${rootDir}/rpc.cert || gencerts --directory=${rootDir} --force`,
-  ])
-
   async function rpc(...args: string[]) {
     return bchdSub.exec([
       'bchctl',
@@ -183,6 +177,12 @@ export const main = sdk.setupMain(async ({ effects }) => {
             if (chattrRes.exitCode !== 0) {
               console.warn(`nocow: chattr not applied for ${rootDir}; continuing startup`)
             }
+            // Generate TLS certs if missing (BCHD requires them for the P2P
+            // listener even when --notls is set for RPC).
+            await bchdSub.exec([
+              'sh', '-c',
+              `test -f ${rootDir}/rpc.cert || gencerts --directory=${rootDir} --force`,
+            ])
             // Strip any legacy `externalip[]=` lines from bchd.conf. BCHD
             // rejects these at config parse; we now pass --externalip via CLI
             // from the list maintained in store.json by watchHosts.
