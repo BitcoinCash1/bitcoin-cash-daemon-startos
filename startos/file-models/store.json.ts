@@ -15,6 +15,8 @@ export const shape = z.object({
   rpcCredentials: z.array(rpcCredentialShape).catch([]),
   network: z.enum(['mainnet', 'chipnet', 'regtest']).catch('mainnet'),
   fullySynced: z.boolean().catch(false),
+  reindexBlockchain: z.boolean().catch(false),
+  reindexChainstate: z.boolean().catch(false),
   torEnabled: z.boolean().catch(true),
   torIsolation: z.boolean().catch(true),
   pruneDepth: z.number().catch(0),

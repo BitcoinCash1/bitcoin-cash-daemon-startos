@@ -8,6 +8,8 @@ import { generateRpcCredential } from './generateRpcCredential'
 import { deleteRpcCredentials } from './deleteRpcCredentials'
 import { networkSettings } from './networkSettings'
 import { deleteTestNetworkData } from './deleteTestNetworkData'
+import { reindexBlockchain } from './reindexBlockchain'
+import { reindexChainstate } from './reindexChainstate'
 
 export const actions = sdk.Actions.of()
   .addAction(networkSettings)
@@ -18,4 +20,7 @@ export const actions = sdk.Actions.of()
   .addAction(viewRpcCredentials)
   .addAction(generateRpcCredential)
   .addAction(deleteRpcCredentials)
+  // ── Maintenance ────────────────────────────────────────────────────────────
+  .addAction(reindexBlockchain)
+  .addAction(reindexChainstate)
   .addAction(deleteTestNetworkData)

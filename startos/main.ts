@@ -23,6 +23,13 @@ export const main = sdk.setupMain(async ({ effects }) => {
   const onlynetList = ((conf?.onlynet as string[] | undefined) ?? []).filter(Boolean)
   const onionOnly = onlynetList.length > 0 && onlynetList.every((n) => n === 'onion')
 
+  // Read and clear reindex flags
+  const reindexBlockchain = store?.reindexBlockchain ?? false
+  const reindexChainstate = store?.reindexChainstate ?? false
+  if (reindexBlockchain || reindexChainstate) {
+    await storeJson.merge(effects, { reindexBlockchain: false, reindexChainstate: false })
+  }
+
   // Tor — get container IP (restarts BCHD if it changes)
   const torIp = torEnabled
     ? await sdk.getContainerIp(effects, { packageId: 'tor' }).const()
@@ -76,6 +83,13 @@ export const main = sdk.setupMain(async ({ effects }) => {
 
   if (grpcEnabled) {
     bchdArgs.push(`--grpclisten=0.0.0.0:${grpcPort}`)
+  }
+
+  // Reindex flags (cleared from store above so they only apply once)
+  if (reindexBlockchain) {
+    bchdArgs.push('--reindex')
+  } else if (reindexChainstate) {
+    bchdArgs.push('--reindexchainstate')
   }
 
   // BIP 157/158 compact block filters
@@ -275,15 +289,15 @@ export const main = sdk.setupMain(async ({ effects }) => {
           if (!grpcEnabled) {
             return {
               result: 'disabled' as const,
-              message: 'gRPC API is disabled in config',
+              message: 'gRPC API is disabled — enable grpclisten in Node Settings to use it',
             }
           }
           try {
             return await grpcReady()
               ? { result: 'success' as const, message: `gRPC API is listening on port ${grpcPort}` }
-              : { result: 'loading' as const, message: 'gRPC API is enabled but not ready yet' }
+              : { result: 'loading' as const, message: 'gRPC API is starting up...' }
           } catch {
-            return { result: 'loading' as const, message: 'gRPC API is enabled but not ready yet' }
+            return { result: 'loading' as const, message: 'gRPC API is starting up...' }
           }
         },
       },
@@ -304,7 +318,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
           if (!fullySynced)
             return {
               result: 'loading' as const,
-              message: 'Tor proxy is configured and will activate after initial sync',
+              message: 'Tor proxy configured — will activate automatically after initial block download completes (normal during first sync)',
             }
           return {
             result: 'success' as const,
