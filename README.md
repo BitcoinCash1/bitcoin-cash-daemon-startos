@@ -135,7 +135,7 @@ None. BCHD **is** the node layer.
 ## Limitations and Differences vs BCHN
 
 1. **No ZMQ** — BCHD uses gRPC pub/sub instead of ZeroMQ for notifications. Dependent packages that hard-require ZMQ may need adaptation. The autoconfig accepts `zmqEnabled` for compatibility but it has no effect.
-2. **No testnet3** — This package supports `mainnet`, `chipnet`, and `regtest`. Testnet3/testnet4 are intentionally not exposed.
+2. **Mainnet only** — This package is configured for BCH mainnet
 3. **Separate sync** — If replacing BCHN, BCHD must sync from scratch (different database format)
 
 ## Contributing

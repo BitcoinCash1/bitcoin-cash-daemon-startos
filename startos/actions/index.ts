@@ -6,11 +6,8 @@ import { autoconfig } from './config/autoconfig'
 import { viewRpcCredentials } from './viewRpcCredentials'
 import { generateRpcCredential } from './generateRpcCredential'
 import { deleteRpcCredentials } from './deleteRpcCredentials'
-import { networkSettings } from './networkSettings'
-import { deleteTestNetworkData } from './deleteTestNetworkData'
 
 export const actions = sdk.Actions.of()
-  .addAction(networkSettings)
   .addAction(nodeSettings)
   .addAction(rpcPeersSettings)
   .addAction(mempoolSettings)
@@ -18,4 +15,3 @@ export const actions = sdk.Actions.of()
   .addAction(viewRpcCredentials)
   .addAction(generateRpcCredential)
   .addAction(deleteRpcCredentials)
-  .addAction(deleteTestNetworkData)

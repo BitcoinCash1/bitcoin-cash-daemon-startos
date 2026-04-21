@@ -1,5 +1,5 @@
 import { sdk } from './sdk'
-import { Network, networkFlag, networkPorts, rootDir } from './utils'
+import { rootDir, rpcPort } from './utils'
 import { bchdConf } from './file-models/bchd.conf'
 import { storeJson } from './file-models/store.json'
 
@@ -8,12 +8,6 @@ export const main = sdk.setupMain(async ({ effects }) => {
 
   const conf = await bchdConf.read().const(effects)
   const store = await storeJson.read().once()
-  const network: Network =
-    store?.network === 'chipnet' || store?.network === 'regtest'
-      ? store.network
-      : 'mainnet'
-  const { rpc: rpcPort, peer: peerPort, grpc: grpcPort } = networkPorts[network]
-  const netFlag = networkFlag[network]
   const activeCred = store?.rpcCredentials?.[0]
   const rpcUser = activeCred?.username ?? store?.rpcUser ?? 'bchd'
   const rpcPassword = activeCred?.password ?? store?.rpcPassword ?? ''
@@ -43,12 +37,8 @@ export const main = sdk.setupMain(async ({ effects }) => {
     `--rpcuser=${rpcUser}`,
     `--rpcpass=${rpcPassword}`,
     `--rpclisten=0.0.0.0:${rpcPort}`,
-    `--listen=0.0.0.0:${peerPort}`,
+    `--listen=0.0.0.0:8333`,
   ]
-
-  if (netFlag) {
-    bchdArgs.push(netFlag)
-  }
 
   // Apply onlynet restrictions only when explicitly narrowed from default-all.
   for (const net of onlynetList) {
@@ -75,7 +65,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
   }
 
   if (grpcEnabled) {
-    bchdArgs.push(`--grpclisten=0.0.0.0:${grpcPort}`)
+    bchdArgs.push('--grpclisten=0.0.0.0:8335')
   }
 
   // BIP 157/158 compact block filters
@@ -141,7 +131,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
     const probe = await bchdSub.exec([
       'sh',
       '-c',
-      `if command -v nc >/dev/null 2>&1; then nc -z 127.0.0.1 ${grpcPort}; else ss -lnt | grep -q ":${grpcPort}"; fi`,
+      'if command -v nc >/dev/null 2>&1; then nc -z 127.0.0.1 8335; else ss -lnt | grep -q ":8335"; fi',
     ])
     return probe.exitCode === 0
   }
@@ -280,7 +270,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
           }
           try {
             return await grpcReady()
-              ? { result: 'success' as const, message: `gRPC API is listening on port ${grpcPort}` }
+              ? { result: 'success' as const, message: 'gRPC API is listening on port 8335' }
               : { result: 'loading' as const, message: 'gRPC API is enabled but not ready yet' }
           } catch {
             return { result: 'loading' as const, message: 'gRPC API is enabled but not ready yet' }
