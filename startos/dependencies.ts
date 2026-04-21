@@ -1,5 +1,5 @@
 import { sdk } from './sdk'
-import { storeJson } from './file-models/store.json'
+import { storeJson } from './fileModels/store.json'
 
 export const setDependencies = sdk.setupDependencies(async ({ effects }) => {
   const store = await storeJson.read().const(effects)

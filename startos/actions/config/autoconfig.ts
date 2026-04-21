@@ -1,5 +1,5 @@
-import { ALL_ONLYNETS, bchdConf, fullConfigSpec, OnlynetKey } from '../../file-models/bchd.conf'
-import { storeJson } from '../../file-models/store.json'
+import { ALL_ONLYNETS, bchdConf, fullConfigSpec, OnlynetKey } from '../../fileModels/bchd.conf'
+import { storeJson } from '../../fileModels/store.json'
 import { sdk } from '../../sdk'
 
 export const autoconfig = sdk.Action.withInput(

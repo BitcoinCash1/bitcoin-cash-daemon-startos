@@ -1,6 +1,6 @@
 import { sdk } from '../sdk'
-import { bchdConf } from '../file-models/bchd.conf'
-import { storeJson } from '../file-models/store.json'
+import { bchdConf } from '../fileModels/bchd.conf'
+import { storeJson } from '../fileModels/store.json'
 
 export const seedFiles = sdk.setupOnInit(async (effects) => {
   // Generate a random RPC password on first install

@@ -1,6 +1,6 @@
 import { sdk } from '../sdk'
-import { ALL_ONLYNETS, bchdConf, fullConfigSpec, OnlynetKey } from '../file-models/bchd.conf'
-import { storeJson } from '../file-models/store.json'
+import { ALL_ONLYNETS, bchdConf, fullConfigSpec, OnlynetKey } from '../fileModels/bchd.conf'
+import { storeJson } from '../fileModels/store.json'
 
 export const rpcPeersSettings = sdk.Action.withInput(
   'rpc-peers-settings',
@@ -18,6 +18,7 @@ export const rpcPeersSettings = sdk.Action.withInput(
     maxpeers: true,
     onlynet: true,
     onionOnly: true,
+    advertiseClearnetInbound: true,
     peerbloomfilters: true,
     cfindex: true,
     torEnabled: true,
@@ -37,6 +38,7 @@ export const rpcPeersSettings = sdk.Action.withInput(
       maxpeers: conf?.maxpeers ?? 125,
       onlynet,
       onionOnly,
+      advertiseClearnetInbound: store?.advertiseClearnetInbound ?? false,
       peerbloomfilters: conf?.nopeerbloomfilters !== 1,
       cfindex: conf?.nocfilters !== 1,
       torEnabled: store?.torEnabled ?? true,
@@ -58,6 +60,7 @@ export const rpcPeersSettings = sdk.Action.withInput(
       nocfilters: input.cfindex ? 0 : 1,
     })
     await storeJson.merge(effects, {
+      advertiseClearnetInbound: input.advertiseClearnetInbound,
       torEnabled: input.torEnabled,
       torIsolation: input.torIsolation,
     })

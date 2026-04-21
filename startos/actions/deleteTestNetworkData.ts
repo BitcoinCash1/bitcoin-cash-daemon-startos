@@ -1,6 +1,6 @@
 import { sdk } from '../sdk'
 import { rootDir } from '../utils'
-import { storeJson } from '../file-models/store.json'
+import { storeJson } from '../fileModels/store.json'
 
 const { InputSpec, Value } = sdk
 

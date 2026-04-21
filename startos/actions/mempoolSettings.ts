@@ -1,5 +1,5 @@
 import { sdk } from '../sdk'
-import { bchdConf, fullConfigSpec } from '../file-models/bchd.conf'
+import { bchdConf, fullConfigSpec } from '../fileModels/bchd.conf'
 
 export const mempoolSettings = sdk.Action.withInput(
   'mempool-settings',

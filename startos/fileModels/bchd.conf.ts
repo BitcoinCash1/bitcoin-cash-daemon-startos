@@ -29,6 +29,7 @@ export const shape = z.object({
   dbflushinterval: iniNumber.catch(1800),
   maxpeers: iniNumber.catch(125),
   onlynet: iniStringArray,
+  externalip: iniStringArray,
   excessiveblocksize: iniNumber.catch(32000000),
   minrelaytxfee: z.union([z.string().transform(Number), z.number()]).catch(0.00001),
 })
@@ -140,6 +141,12 @@ export const fullConfigSpec = sdk.InputSpec.of({
     description:
       'Use a separate Tor circuit for each peer connection (torisolation) when Tor proxying is active. Provides stronger privacy at the cost of slightly slower connection establishment.',
     default: true,
+  }),
+  advertiseClearnetInbound: sdk.Value.toggle({
+    name: 'Advertise Clearnet Inbound',
+    description:
+      'Publish your public IPv4 and IPv6 clearnet endpoints for inbound peers. Respects the Allowed Networks setting — a network excluded by onlynet (or by Onion-Only Mode) is never advertised. Disabled by default for privacy.',
+    default: false,
   }),
   excessiveblocksize: sdk.Value.number({
     name: 'Excessive Block Size',

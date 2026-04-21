@@ -6,8 +6,8 @@ import {
   rpcInterfaceId,
   Network,
 } from './utils'
-import { bchdConf } from './file-models/bchd.conf'
-import { storeJson } from './file-models/store.json'
+import { bchdConf } from './fileModels/bchd.conf'
+import { storeJson } from './fileModels/store.json'
 
 export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
   const conf = await bchdConf.read().const(effects)

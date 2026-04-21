@@ -24,7 +24,10 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -o /usr/local/b
 FROM debian:stable-slim
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends ca-certificates && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        netcat-openbsd \
+        e2fsprogs && \
     rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /usr/local/bin/bchd /usr/local/bin/

@@ -1,6 +1,6 @@
 import { sdk } from '../sdk'
-import { bchdConf, fullConfigSpec } from '../file-models/bchd.conf'
-import { storeJson } from '../file-models/store.json'
+import { bchdConf, fullConfigSpec } from '../fileModels/bchd.conf'
+import { storeJson } from '../fileModels/store.json'
 
 export const nodeSettings = sdk.Action.withInput(
   'node-settings',

@@ -1,7 +1,10 @@
 import { sdk } from './sdk'
 import { Network, networkFlag, networkPorts, rootDir } from './utils'
-import { bchdConf } from './file-models/bchd.conf'
-import { storeJson } from './file-models/store.json'
+import { bchdConf } from './fileModels/bchd.conf'
+import { storeJson } from './fileModels/store.json'
+import { mainMounts } from './mounts'
+
+export { mainMounts }
 
 export const main = sdk.setupMain(async ({ effects }) => {
   console.log('Starting BCHD!')
@@ -21,7 +24,9 @@ export const main = sdk.setupMain(async ({ effects }) => {
 
   const grpcEnabled = (conf?.grpclisten ?? '') !== ''
   const onlynetList = ((conf?.onlynet as string[] | undefined) ?? []).filter(Boolean)
-  const onionOnly = onlynetList.length > 0 && onlynetList.every((n) => n === 'onion')
+  const onlynetActive = onlynetList.length > 0
+  const onionOnly = onlynetActive && onlynetList.every((n) => n === 'onion')
+  const externalip = ((conf?.externalip as string[] | undefined) ?? []).filter(Boolean)
 
   // Read and clear reindex flags
   const reindexBlockchain = store?.reindexBlockchain ?? false
@@ -60,6 +65,11 @@ export const main = sdk.setupMain(async ({ effects }) => {
   // Apply onlynet restrictions only when explicitly narrowed from default-all.
   for (const net of onlynetList) {
     bchdArgs.push(`--onlynet=${net}`)
+  }
+
+  // Advertise externalip endpoints for inbound peers (written by watchHosts).
+  for (const ip of externalip) {
+    bchdArgs.push(`--externalip=${ip}`)
   }
 
   // txindex / addrindex (conditional)
@@ -120,18 +130,11 @@ export const main = sdk.setupMain(async ({ effects }) => {
   bchdArgs.push(`--rpccert=${rootDir}/rpc.cert`)
   bchdArgs.push(`--rpckey=${rootDir}/rpc.key`)
 
-  const mounts = sdk.Mounts.of().mountVolume({
-    volumeId: 'main',
-    subpath: null,
-    mountpoint: rootDir,
-    readonly: false,
-  })
-
   const bchdSub = await sdk.SubContainer.of(
     effects,
     { imageId: 'bchd' },
-    mounts,
-    'bchd-sub',
+    mainMounts,
+    'node-sub',
   )
 
   // Generate TLS certs if missing (BCHD needs them even with --notls)
@@ -160,7 +163,34 @@ export const main = sdk.setupMain(async ({ effects }) => {
     return probe.exitCode === 0
   }
 
+  const excludedByOnlynet = () => ({
+    result: 'disabled' as const,
+    message: 'Excluded by onlynet',
+  })
+
   return sdk.Daemons.of(effects)
+    .addOneshot('nocow', {
+      subcontainer: null,
+      exec: {
+        fn: async () => {
+          try {
+            const mkdirRes = await bchdSub.exec(['mkdir', '-p', rootDir])
+            if (mkdirRes.exitCode !== 0) {
+              console.warn(`nocow: mkdir failed for ${rootDir}; continuing without chattr`)
+              return null
+            }
+            const chattrRes = await bchdSub.exec(['chattr', '-R', '+C', rootDir])
+            if (chattrRes.exitCode !== 0) {
+              console.warn(`nocow: chattr not applied for ${rootDir}; continuing startup`)
+            }
+          } catch (err) {
+            console.warn('nocow: unable to set NoCOW attributes; continuing startup', err)
+          }
+          return null
+        },
+      },
+      requires: [],
+    })
     .addDaemon('primary', {
       subcontainer: bchdSub,
       exec: {
@@ -180,7 +210,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
           }
         },
       },
-      requires: [],
+      requires: ['nocow'],
     })
     .addHealthCheck('sync-progress', {
       ready: {
@@ -305,7 +335,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
     })
     .addHealthCheck('tor', {
       ready: {
-        display: 'Tor Proxy',
+        display: 'Tor',
         fn: () => {
           if (onionOnly && !torEnabled)
             return { result: 'failure' as const, message: 'Invalid config: onlynet=onion requires Tor routing enabled' }
@@ -315,6 +345,8 @@ export const main = sdk.setupMain(async ({ effects }) => {
             return { result: 'disabled' as const, message: 'Tor is not installed' }
           if (!torRunning)
             return { result: 'disabled' as const, message: 'Tor is not running' }
+          if (onlynetActive && !onlynetList.includes('onion'))
+            return excludedByOnlynet()
           if (!fullySynced)
             return {
               result: 'loading' as const,
@@ -322,11 +354,25 @@ export const main = sdk.setupMain(async ({ effects }) => {
             }
           return {
             result: 'success' as const,
-            message: store?.torIsolation
-              ? 'Tor proxy active with stream isolation'
-              : 'Tor proxy active',
+            message: externalip.some((ip) => ip.includes('.onion'))
+              ? store?.torIsolation
+                ? 'Tor proxy active with stream isolation — inbound and outbound connections'
+                : 'Tor proxy active — inbound and outbound connections'
+              : store?.torIsolation
+                ? 'Tor proxy active with stream isolation — outbound only. Add an onion address to enable inbound.'
+                : 'Tor proxy active — outbound only. Add an onion address to enable inbound.',
           }
         },
+      },
+      requires: [],
+    })
+    .addHealthCheck('i2p', {
+      ready: {
+        display: 'I2P',
+        fn: () => ({
+          result: 'disabled' as const,
+          message: 'I2P support is not implemented yet.',
+        }),
       },
       requires: [],
     })
@@ -334,27 +380,13 @@ export const main = sdk.setupMain(async ({ effects }) => {
       ready: {
         display: 'Clearnet',
         fn: () => {
-          if (onionOnly) {
-            return {
-              result: 'disabled' as const,
-              message: 'Clearnet disabled — onlynet=onion is set',
-            }
-          }
-          if (torEnabled && torIp && !fullySynced) {
-            return {
-              result: 'success' as const,
-              message: 'Direct clearnet peers active during initial sync',
-            }
-          }
-          if (torEnabled && torIp) {
-            return {
-              result: 'success' as const,
-              message: 'Clearnet allowed (outbound peers routed via Tor proxy)',
-            }
-          }
+          if (onlynetActive && !onlynetList.includes('ipv4') && !onlynetList.includes('ipv6'))
+            return excludedByOnlynet()
           return {
             result: 'success' as const,
-            message: 'Direct clearnet peers active',
+            message: externalip.some((ip) => ip && !ip.includes('.onion'))
+              ? 'Inbound and outbound connections'
+              : 'Outbound only. Publish an IP address to enable inbound.',
           }
         },
       },

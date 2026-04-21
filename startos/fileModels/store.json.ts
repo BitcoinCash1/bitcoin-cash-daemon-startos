@@ -20,6 +20,7 @@ export const shape = z.object({
   torEnabled: z.boolean().catch(true),
   torIsolation: z.boolean().catch(true),
   pruneDepth: z.number().catch(0),
+  advertiseClearnetInbound: z.boolean().catch(false),
 })
 
 export const storeJson = FileHelper.json(
