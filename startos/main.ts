@@ -149,10 +149,16 @@ export const main = sdk.setupMain(async ({ effects }) => {
   }
 
   async function grpcReady() {
+    // Use a LISTEN-state check against /proc so we don't actually open a TCP
+    // connection to the gRPC port. bchd's gRPC is HTTP/2 over TLS; any
+    // bare TCP probe (nc -z, etc.) that accepts+closes without sending a
+    // ClientHello causes the Go stdlib to log a `TLS handshake error
+    // from <addr>: EOF` every probe interval. /proc/net/tcp is zero-touch.
+    const hexPort = grpcPort.toString(16).toUpperCase().padStart(4, '0')
     const probe = await bchdSub.exec([
       'sh',
       '-c',
-      `if command -v nc >/dev/null 2>&1; then nc -z 127.0.0.1 ${grpcPort}; else ss -lnt | grep -q ":${grpcPort}"; fi`,
+      `awk -v p=":${hexPort}" '$4=="0A" && $2 ~ p"$" {found=1} END{exit !found}' /proc/1/net/tcp /proc/1/net/tcp6`,
     ])
     return probe.exitCode === 0
   }
