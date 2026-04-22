@@ -67,8 +67,22 @@ export const main = sdk.setupMain(async ({ effects }) => {
     bchdArgs.push(`--onlynet=${net}`)
   }
 
+  const fullySynced = store?.fullySynced ?? false
+  const torProxyActive = Boolean(torIp && fullySynced)
+
   // Advertise externalip endpoints for inbound peers (written by watchHosts).
+  // Onion externalips require an active Tor proxy — otherwise BCHD tries to
+  // DNS-resolve the .onion and drops it with
+  //   "[WRN] SRVR: Not adding <addr>.onion:<port> as externalip: attempt to
+  //    resolve tor address"
+  // which permanently omits the address from localaddresses for the run. We
+  // skip onion externalips while Tor is deferred (IBD); they are re-applied
+  // on the restart that happens when fullySynced flips to true.
   for (const ip of externalip) {
+    if (ip.includes('.onion') && !torProxyActive) {
+      console.log(`Deferring onion externalip until Tor proxy is active: ${ip}`)
+      continue
+    }
     bchdArgs.push(`--externalip=${ip}`)
   }
 
@@ -78,10 +92,8 @@ export const main = sdk.setupMain(async ({ effects }) => {
     bchdArgs.push('--addrindex')
   }
 
-  const fullySynced = store?.fullySynced ?? false
-
   // Tor proxy args — skipped during IBD to avoid crippling sync speed
-  if (torIp && fullySynced) {
+  if (torProxyActive) {
     bchdArgs.push(`--proxy=${torIp}:9050`)
     bchdArgs.push(`--onion=${torIp}:9050`)
     if (store?.torIsolation) {
