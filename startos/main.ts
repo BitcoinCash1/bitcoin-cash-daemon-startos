@@ -136,9 +136,14 @@ export const main = sdk.setupMain(async ({ effects }) => {
     bchdArgs.push('--nopeerbloomfilters')
   }
 
-  // Disable TLS for RPC in container context
-  bchdArgs.push('--notls')
-  // Point to generated certs (BCHD requires them even with --notls for P2P listener)
+  // Enable native TLS on RPC and gRPC using the self-signed cert generated
+  // by `gencerts` in the nocow oneshot. BCHD otherwise emits:
+  //   [WRN] loadConfig: the --notls option is not recommended when binding
+  //   RPC to non localhost addresses: 0.0.0.0:<port>
+  // at every startup, because the StartOS container network requires binding
+  // to a non-loopback interface so the reverse proxy can reach it.
+  // The StartOS RPC and gRPC interfaces are declared as pass-through TLS so
+  // clients see https:// URLs all the way through.
   bchdArgs.push(`--rpccert=${rootDir}/rpc.cert`)
   bchdArgs.push(`--rpckey=${rootDir}/rpc.key`)
 
@@ -150,12 +155,14 @@ export const main = sdk.setupMain(async ({ effects }) => {
   )
 
   async function rpc(...args: string[]) {
+    // RPC now runs under TLS with a self-signed cert; point bchctl at that
+    // cert so verification succeeds for internal health-check calls.
     return bchdSub.exec([
       'bchctl',
       `--rpcserver=127.0.0.1:${rpcPort}`,
       `--rpcuser=${rpcUser}`,
       `--rpcpass=${rpcPassword}`,
-      '--notls',
+      `--rpccert=${rootDir}/rpc.cert`,
       ...args,
     ])
   }

@@ -20,18 +20,27 @@ export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
   const receipts = []
 
   // ── RPC ──────────────────────────────────────────────────────────────
+  // BCHD's RPC server is JSON-RPC-over-HTTPS. We enable native TLS (cert
+  // from `gencerts` in the nocow oneshot) so that BCHD does not emit the
+  // `--notls option is not recommended when binding RPC to non localhost`
+  // advisory at every startup. Declared as pass-through TLS so StartOS
+  // forwards raw TLS to the backend and hands clients an https:// URL.
+  // Clients must trust the self-signed cert (or skip verification).
   const rpcMulti = sdk.MultiHost.of(effects, 'rpc')
   const rpcOrigin = await rpcMulti.bindPort(rpcPort, {
-    protocol: 'http',
+    protocol: null,
     preferredExternalPort: rpcPort,
+    addSsl: null,
+    secure: { ssl: true },
   })
   const rpc = sdk.createInterface(effects, {
     name: 'RPC Interface',
     id: rpcInterfaceId,
-    description: 'JSON-RPC interface for BCHD — compatible with BCHN RPC',
+    description:
+      'JSON-RPC over TLS — compatible with BCHN RPC. Uses BCHD self-signed cert (gencerts); clients must trust /data/rpc.cert or skip TLS verification.',
     type: 'api',
     masked: false,
-    schemeOverride: null,
+    schemeOverride: { ssl: 'https', noSsl: 'https' },
     username: null,
     path: '',
     query: {},
