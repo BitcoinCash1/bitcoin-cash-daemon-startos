@@ -27,7 +27,8 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         ca-certificates \
         netcat-openbsd \
-        e2fsprogs && \
+        e2fsprogs \
+        stunnel4 && \
     rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /usr/local/bin/bchd /usr/local/bin/
@@ -36,6 +37,6 @@ COPY --from=build /usr/local/bin/gencerts /usr/local/bin/
 
 RUN mkdir -p /data
 VOLUME /data
-EXPOSE 8332 8333 8335
+EXPOSE 8332 8333 8334 8335
 
 ENTRYPOINT ["bchd"]

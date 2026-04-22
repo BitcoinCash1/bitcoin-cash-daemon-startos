@@ -1,5 +1,5 @@
 import { sdk } from './sdk'
-import { Network, networkFlag, networkPorts, rootDir } from './utils'
+import { Network, networkFlag, networkPorts, rootDir, rpcPlaintextPort } from './utils'
 import { bchdConf } from './fileModels/bchd.conf'
 import { storeJson } from './fileModels/store.json'
 import { mainMounts } from './mounts'
@@ -152,6 +152,16 @@ export const main = sdk.setupMain(async ({ effects }) => {
     { imageId: 'bchd' },
     mainMounts,
     'node-sub',
+  )
+
+  // stunnel SubContainer: accepts plaintext HTTP on 8334, forwards to
+  // BCHD's native TLS RPC on 127.0.0.1:8332. Required for ckpool-lineage
+  // miners (asicseer-pool, ckpool) which have no TLS/SSL library at all.
+  const stunnelSub = await sdk.SubContainer.of(
+    effects,
+    { imageId: 'bchd' },
+    mainMounts,
+    'stunnel-sub',
   )
 
   async function rpc(...args: string[]) {
@@ -423,5 +433,24 @@ export const main = sdk.setupMain(async ({ effects }) => {
         },
       },
       requires: [],
+    })
+    .addDaemon('rpc-plaintext', {
+      subcontainer: stunnelSub,
+      exec: {
+        command: [
+          'sh', '-c',
+          `{ echo 'foreground = yes'; echo 'pid ='; echo ''; echo '[rpc-plaintext]'; echo 'client = yes'; echo 'accept = 0.0.0.0:${rpcPlaintextPort}'; echo 'connect = 127.0.0.1:${rpcPort}'; echo 'verify = 0'; } > /tmp/stunnel-rpc.conf && exec stunnel4 /tmp/stunnel-rpc.conf`,
+        ],
+        sigtermTimeout: 5_000,
+      },
+      ready: {
+        display: 'RPC Plaintext Proxy',
+        fn: async () =>
+          sdk.healthCheck.checkPortListening(effects, rpcPlaintextPort, {
+            successMessage: `Plaintext RPC proxy ready on port ${rpcPlaintextPort} (stunnel → BCHD TLS)`,
+            errorMessage: 'Plaintext RPC proxy starting...',
+          }),
+      },
+      requires: ['primary'],
     })
 })

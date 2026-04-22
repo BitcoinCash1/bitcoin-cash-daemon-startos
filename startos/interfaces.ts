@@ -4,6 +4,8 @@ import {
   networkPorts,
   peerInterfaceId,
   rpcInterfaceId,
+  rpcPlaintextInterfaceId,
+  rpcPlaintextPort,
   Network,
 } from './utils'
 import { bchdConf } from './fileModels/bchd.conf'
@@ -99,6 +101,34 @@ export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
     })
     receipts.push(await grpcOrigin.export([grpc]))
   }
+
+  // ── RPC Plaintext Proxy (stunnel sidecar for ckpool-lineage miners) ──
+  // asicseer-pool and ckpool have no SSL/TLS library — they speak plain
+  // HTTP JSON-RPC only. A stunnel SubContainer accepts plaintext on 8334
+  // and forwards to BCHD's native TLS RPC on 127.0.0.1:8332 internally.
+  // TLS is never absent on the BCHD side; it just terminates at stunnel.
+  // When upstream gains native TLS support this daemon and interface are
+  // removed in a single commit — no changes needed in the miner packages.
+  const rpcPlaintextMulti = sdk.MultiHost.of(effects, rpcPlaintextInterfaceId)
+  const rpcPlaintextOrigin = await rpcPlaintextMulti.bindPort(rpcPlaintextPort, {
+    protocol: null,
+    preferredExternalPort: rpcPlaintextPort,
+    addSsl: null,
+    secure: { ssl: false },
+  })
+  const rpcPlaintext = sdk.createInterface(effects, {
+    name: 'RPC Plaintext Proxy',
+    id: rpcPlaintextInterfaceId,
+    description:
+      'JSON-RPC plaintext port for ckpool-lineage miners (asicseer-pool, ckpool). stunnel proxy: accepts plain HTTP on 8334, forwards to BCHD TLS RPC on 8332 internally.',
+    type: 'api',
+    masked: false,
+    schemeOverride: { ssl: 'http', noSsl: 'http' },
+    username: null,
+    path: '',
+    query: {},
+  })
+  receipts.push(await rpcPlaintextOrigin.export([rpcPlaintext]))
 
   return receipts
 })
