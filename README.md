@@ -75,9 +75,9 @@ From the **Actions** tab in StartOS, select **Configure** to adjust:
 
 | Setting          | Default | Description                                      |
 | ---------------- | ------- | ------------------------------------------------ |
-| gRPC API         | On      | Enable gRPC on port 8335 (BIP 157/158, pub/sub)  |
-| Database Cache   | 2048 MB | RAM allocated to UTXO database cache             |
-| Max Peers        | 125     | Maximum peer connections                         |
+| gRPC API         | On       | Enable gRPC on port 8335 (BIP 157/158, pub/sub)                                   |
+| Database Cache   | 2048 MiB | RAM allocated to UTXO database cache. Lower to 1024 on shared hosts under 16 GiB. |
+| Max Peers        | 125      | Maximum peer connections                                                          |
 | Tor Routing      | Off     | Disabled by default for faster initial sync      |
 
 ### Always-On Features
