@@ -1,7 +1,7 @@
 # ── Build BCHD from source (cross-compile natively via Go) ─────────
 FROM --platform=$BUILDPLATFORM golang:1.23-bookworm AS build
 
-ARG BCHD_VERSION=v0.21.1
+ARG BCHD_VERSION=v0.22.0
 ARG TARGETOS
 ARG TARGETARCH
 
