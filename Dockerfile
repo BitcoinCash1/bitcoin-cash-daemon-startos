@@ -16,6 +16,10 @@ RUN curl -fL --retry 6 --retry-delay 5 --retry-all-errors \
     rm -f /tmp/bchd.tar.gz
 
 WORKDIR /build/bchd
+COPY patches/fix-getblocktemplate-upgrade9.patch /tmp/
+# Fix: CheckConnectBlockTemplate omits BFUpgrade9 flag, causing getblocktemplate
+# to enforce the old 100-byte minimum instead of the post-upgrade9 65-byte one.
+RUN patch -p1 < /tmp/fix-getblocktemplate-upgrade9.patch
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -o /usr/local/bin/bchd . && \
     CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -o /usr/local/bin/bchctl ./cmd/bchctl && \
     CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -o /usr/local/bin/gencerts ./cmd/gencerts
