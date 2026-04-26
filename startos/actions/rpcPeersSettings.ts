@@ -19,8 +19,6 @@ export const rpcPeersSettings = sdk.Action.withInput(
     onlynet: true,
     onionOnly: true,
     advertiseClearnetInbound: true,
-    peerbloomfilters: true,
-    cfindex: true,
     torEnabled: true,
     torIsolation: true,
   }),
@@ -39,8 +37,6 @@ export const rpcPeersSettings = sdk.Action.withInput(
       onlynet,
       onionOnly,
       advertiseClearnetInbound: store?.advertiseClearnetInbound ?? false,
-      peerbloomfilters: conf?.nopeerbloomfilters !== 1,
-      cfindex: conf?.nocfilters !== 1,
       torEnabled: store?.torEnabled ?? true,
       torIsolation: store?.torIsolation ?? true,
     }
@@ -56,8 +52,6 @@ export const rpcPeersSettings = sdk.Action.withInput(
     await bchdConf.merge(effects, {
       maxpeers: input.maxpeers,
       onlynet: writeOnlynet,
-      nopeerbloomfilters: input.peerbloomfilters ? 0 : 1,
-      nocfilters: input.cfindex ? 0 : 1,
     })
     await storeJson.merge(effects, {
       advertiseClearnetInbound: input.advertiseClearnetInbound,

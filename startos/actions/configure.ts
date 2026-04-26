@@ -18,6 +18,8 @@ export const nodeSettings = sdk.Action.withInput(
     txindex: true,
     prune: true,
     grpcEnabled: true,
+    peerbloomfilters: true,
+    cfindex: true,
     dbcachesize: true,
     dbflushinterval: true,
   }),
@@ -29,6 +31,8 @@ export const nodeSettings = sdk.Action.withInput(
       txindex: conf?.txindex === 1 || conf?.txindex === true,
       prune: store?.pruneDepth ?? 0,
       grpcEnabled: (conf?.grpclisten ?? '') !== '',
+      peerbloomfilters: conf?.nopeerbloomfilters !== 1,
+      cfindex: conf?.nocfilters !== 1,
       dbcachesize: conf?.dbcachesize ?? 2048,
       dbflushinterval: conf?.dbflushinterval ?? 1800,
     }
@@ -40,6 +44,8 @@ export const nodeSettings = sdk.Action.withInput(
       txindex: txindex ? 1 : 0,
       addrindex: txindex ? 1 : 0,
       grpclisten: input.grpcEnabled ? '0.0.0.0:8335' : '',
+      nopeerbloomfilters: input.peerbloomfilters ? 0 : 1,
+      nocfilters: input.cfindex ? 0 : 1,
       dbcachesize: input.dbcachesize,
       dbflushinterval: input.dbflushinterval,
     })
