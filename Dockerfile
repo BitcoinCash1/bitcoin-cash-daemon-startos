@@ -5,7 +5,7 @@ ARG BCHD_VERSION=v0.22.0
 ARG TARGETOS
 ARG TARGETARCH
 
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl tar && \
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl tar patch && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build
