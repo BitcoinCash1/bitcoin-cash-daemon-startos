@@ -439,7 +439,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
       exec: {
         command: [
           'sh', '-c',
-          `{ echo 'foreground = yes'; echo 'pid ='; echo ''; echo '[rpc-plaintext]'; echo 'client = yes'; echo 'accept = 0.0.0.0:${rpcPlaintextPort}'; echo 'connect = 127.0.0.1:${rpcPort}'; echo 'verify = 0'; } > /tmp/stunnel-rpc.conf && exec stunnel4 /tmp/stunnel-rpc.conf`,
+          `{ echo 'foreground = yes'; echo 'pid ='; echo 'debug = 0'; echo 'output = /dev/null'; echo 'syslog = no'; echo ''; echo '[rpc-plaintext]'; echo 'client = yes'; echo 'accept = 0.0.0.0:${rpcPlaintextPort}'; echo 'connect = 127.0.0.1:${rpcPort}'; echo 'verify = 0'; } > /tmp/stunnel-rpc.conf && exec stunnel4 /tmp/stunnel-rpc.conf >/dev/null 2>&1`,
         ],
         sigtermTimeout: 5_000,
       },
