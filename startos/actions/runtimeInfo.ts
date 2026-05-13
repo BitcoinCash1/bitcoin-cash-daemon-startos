@@ -1,6 +1,6 @@
 import { sdk } from '../sdk'
 import { storeJson } from '../fileModels/store.json'
-import { Network, networkPorts, rootDir } from '../utils'
+import { Network, NETWORKS, networkPorts, rootDir } from '../utils'
 import { mainMounts } from '../mounts'
 
 type BchdInfo = {
@@ -38,9 +38,7 @@ export const runtimeInfo = sdk.Action.withoutInput(
   async ({ effects }) => {
     const store = await storeJson.read().once()
     const network: Network =
-      store?.network === 'chipnet' || store?.network === 'regtest'
-        ? store.network
-        : 'mainnet'
+      NETWORKS.includes(store?.network as Network) ? (store!.network as Network) : 'mainnet'
     const { rpc: rpcPort } = networkPorts[network]
     const activeCred = store?.rpcCredentials?.[0]
     const rpcUser = activeCred?.username ?? store?.rpcUser ?? 'bchd'

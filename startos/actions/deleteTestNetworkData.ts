@@ -12,6 +12,7 @@ const deleteSpec = InputSpec.of({
     warning: null,
     default: [],
     values: {
+      testnet3: 'Testnet3',
       chipnet: 'Chipnet',
       regtest: 'Regtest',
     },
@@ -20,7 +21,7 @@ const deleteSpec = InputSpec.of({
   }),
 })
 
-function pathsFor(network: 'chipnet' | 'regtest') {
+function pathsFor(network: 'testnet3' | 'chipnet' | 'regtest') {
   return [
     `${rootDir}/${network}`,
     `${rootDir}/logs/${network}`,
@@ -33,7 +34,7 @@ export const deleteTestNetworkData = sdk.Action.withInput(
   async () => ({
     name: 'Delete Test Network Data',
     description:
-      'Delete all BCHD data for chipnet and/or regtest. Mainnet data is never deleted by this action.',
+      'Delete all BCHD data for testnet3, chipnet and/or regtest. Mainnet data is never deleted by this action.',
     warning:
       'This permanently deletes selected test-network data, indexes, peers, and logs from disk.',
     allowedStatuses: 'any',
@@ -44,12 +45,12 @@ export const deleteTestNetworkData = sdk.Action.withInput(
   deleteSpec,
 
   async () => ({
-    networks: [] as Array<'chipnet' | 'regtest'>,
+    networks: [] as Array<'testnet3' | 'chipnet' | 'regtest'>,
   }),
 
   async ({ effects, input }) => {
     const selected = ((input.networks as string[] | undefined) ?? []).filter(
-      (n): n is 'chipnet' | 'regtest' => n === 'chipnet' || n === 'regtest',
+      (n): n is 'testnet3' | 'chipnet' | 'regtest' => n === 'testnet3' || n === 'chipnet' || n === 'regtest',
     )
 
     if (selected.length === 0) {
@@ -63,7 +64,7 @@ export const deleteTestNetworkData = sdk.Action.withInput(
 
     const store = await storeJson.read().once()
     const active = store?.network ?? 'mainnet'
-    if (selected.includes(active as 'chipnet' | 'regtest')) {
+    if (selected.includes(active as 'testnet3' | 'chipnet' | 'regtest')) {
       return {
         version: '1' as const,
         title: 'Active Network Protected',

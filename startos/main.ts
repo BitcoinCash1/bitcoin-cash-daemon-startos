@@ -1,5 +1,5 @@
 import { sdk } from './sdk'
-import { Network, networkFlag, networkPorts, rootDir, rpcPlaintextPort } from './utils'
+import { Network, NETWORKS, networkFlag, networkPorts, rootDir, rpcPlaintextPort } from './utils'
 import { bchdConf } from './fileModels/bchd.conf'
 import { storeJson } from './fileModels/store.json'
 import { mainMounts } from './mounts'
@@ -12,9 +12,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
   const conf = await bchdConf.read().const(effects)
   const store = await storeJson.read().once()
   const network: Network =
-    store?.network === 'chipnet' || store?.network === 'regtest'
-      ? store.network
-      : 'mainnet'
+    NETWORKS.includes(store?.network as Network) ? (store!.network as Network) : 'mainnet'
   const { rpc: rpcPort, peer: peerPort, grpc: grpcPort } = networkPorts[network]
   const netFlag = networkFlag[network]
   const activeCred = store?.rpcCredentials?.[0]

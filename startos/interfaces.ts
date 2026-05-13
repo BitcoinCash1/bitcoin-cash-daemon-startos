@@ -7,6 +7,7 @@ import {
   rpcPlaintextInterfaceId,
   rpcPlaintextPort,
   Network,
+  NETWORKS,
 } from './utils'
 import { bchdConf } from './fileModels/bchd.conf'
 import { storeJson } from './fileModels/store.json'
@@ -15,9 +16,7 @@ export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
   const conf = await bchdConf.read().const(effects)
   const store = await storeJson.read().const(effects)
   const network: Network =
-    store?.network === 'chipnet' || store?.network === 'regtest'
-      ? store.network
-      : 'mainnet'
+    NETWORKS.includes(store?.network as Network) ? (store!.network as Network) : 'mainnet'
   const { rpc: rpcPort, peer: peerPort, grpc: grpcPort } = networkPorts[network]
   const receipts = []
 
