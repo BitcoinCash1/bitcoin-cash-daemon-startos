@@ -38,8 +38,7 @@ export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
   const rpc = sdk.createInterface(effects, {
     name: 'RPC Interface',
     id: rpcInterfaceId,
-    description:
-      'Listens for JSON-RPC commands over TLS. Self-signed certificate at /data/rpc.cert; clients must trust it or skip verification.',
+    description: 'Listens for JSON-RPC commands over TLS',
     type: 'api',
     masked: false,
     schemeOverride: { ssl: 'https', noSsl: 'https' },
@@ -91,7 +90,7 @@ export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
       name: 'gRPC Interface',
       id: grpcInterfaceId,
       description:
-        'BCHD-specific gRPC API over TLS for BIP 157/158 compact block filters and pub/sub notifications. Niche: client software must be designed against BCHD\'s gRPC schema; most software uses the RPC Interface instead.',
+        'BCHD-specific gRPC API over TLS for compact block filters and pub/sub notifications',
       type: 'api',
       masked: false,
       schemeOverride: { ssl: 'https', noSsl: 'https' },
@@ -120,7 +119,7 @@ export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
     name: 'RPC Plaintext Proxy',
     id: rpcPlaintextInterfaceId,
     description:
-      'Plaintext JSON-RPC on port 8334 for ckpool-lineage miners (asicseer-pool, ckpool) that have no TLS support. A bundled stunnel sidecar forwards to BCHD\'s TLS RPC internally. Use the regular RPC Interface for anything else.',
+      'Plaintext JSON-RPC for miners (asicseer-pool, ckpool) that lack TLS support',
     type: 'api',
     masked: false,
     schemeOverride: { ssl: 'http', noSsl: 'http' },
