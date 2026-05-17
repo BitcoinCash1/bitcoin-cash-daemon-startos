@@ -268,10 +268,14 @@ export const main = sdk.setupMain(async ({ effects }) => {
               verificationprogress?: number
               initialblockdownload?: boolean
             }
-            // BCHD omits verificationprogress & syncheight from JSON when
-            // they are zero (Go omitempty). In JS, undefined < 0.999 is
-            // false, so we must default to 0 to avoid a false "synced".
-            const vp = info.verificationprogress ?? 0
+            // BCHD (Go) uses omitempty: verificationprogress, syncheight, and
+            // initialblockdownload are all absent from the JSON when fully
+            // synced. Do NOT default VP to 0 — 0 < 0.999 would show a false
+            // "Syncing 0%" on a synced node every restart. Instead, only use
+            // VP when BCHD actually returned it (non-undefined). During real
+            // IBD, mediantime will be years behind wall-clock so isStale
+            // reliably catches the syncing state even without VP.
+            const vp = info.verificationprogress  // undefined when BCHD omits it
             const syncHeight = info.syncheight ?? 0
 
             // Median-time staleness: mediantime is the median of the last
@@ -283,11 +287,13 @@ export const main = sdk.setupMain(async ({ effects }) => {
 
             const isSyncing =
               info.initialblockdownload === true ||
-              vp < 0.999 ||
+              (vp !== undefined && vp < 0.999) ||
               (syncHeight > 0 && info.blocks < syncHeight - 10) ||
               isStale
             if (isSyncing) {
-              const pct = (vp * 100).toFixed(2)
+              const pct = vp !== undefined
+                ? (vp * 100).toFixed(2)
+                : info.headers > 0 ? ((info.blocks / info.headers) * 100).toFixed(2) : '0.00'
               const target = syncHeight > 0 ? syncHeight : info.headers
               return {
                 message: `Syncing blocks... ${pct}% (${info.blocks.toLocaleString()}/${target.toLocaleString()})`,
