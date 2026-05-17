@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="icon.svg" alt="BCHD Logo" width="21%">
+  <img src="assets/bchd-logo.svg" alt="BCHD Logo" width="21%">
 </p>
 
 # Bitcoin Cash Daemon (BCHD) for StartOS
