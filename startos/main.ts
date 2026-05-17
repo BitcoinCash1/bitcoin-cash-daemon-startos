@@ -443,11 +443,23 @@ export const main = sdk.setupMain(async ({ effects }) => {
       },
       ready: {
         display: 'RPC Plaintext Proxy',
-        fn: async () =>
-          sdk.healthCheck.checkPortListening(effects, rpcPlaintextPort, {
-            successMessage: `Plaintext RPC proxy ready on port ${rpcPlaintextPort} (stunnel → BCHD TLS)`,
-            errorMessage: 'Plaintext RPC proxy starting...',
-          }),
+        fn: async () => {
+          // Use /proc/net/tcp to check if stunnel is listening — avoids
+          // opening a TCP connection to the TLS-terminating proxy which causes
+          // Node.js to buffer the raw TLS handshake and exceed maxBuffer.
+          const hexPort = rpcPlaintextPort.toString(16).toUpperCase().padStart(4, '0')
+          try {
+            const probe = await stunnelSub.exec([
+              'sh', '-c',
+              `awk -v p=":${hexPort}" '$4=="0A" && $2 ~ p"$" {found=1} END{exit !found}' /proc/1/net/tcp /proc/1/net/tcp6 2>/dev/null`,
+            ])
+            return probe.exitCode === 0
+              ? { result: 'success' as const, message: `Plaintext RPC proxy ready on port ${rpcPlaintextPort} (stunnel → BCHD TLS)` }
+              : { result: 'starting' as const, message: 'Plaintext RPC proxy starting...' }
+          } catch {
+            return { result: 'starting' as const, message: 'Plaintext RPC proxy starting...' }
+          }
+        },
       },
       requires: ['primary'],
     })
