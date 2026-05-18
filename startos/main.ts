@@ -282,7 +282,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
             // 11 blocks (~55 min behind for a fully-synced BCH node).
             // If it is more than 2 hours behind wall-clock, still syncing.
             const now = Math.floor(Date.now() / 1000)
-            const medianAge = info.mediantime ? now - info.mediantime : Infinity
+            const medianAge = info.mediantime != null ? now - info.mediantime : 0
             const isStale = medianAge > 7200
 
             const isSyncing =
