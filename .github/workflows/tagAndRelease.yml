@@ -4,6 +4,8 @@ on:
   push:
     branches: ['master']
     paths-ignore: ['README.md']
+  repository_dispatch:
+    types: [upstream-release]
 
 permissions:
   contents: write
@@ -32,6 +34,59 @@ jobs:
           else
             start-cli init-key
           fi
+        shell: bash
+
+      # Runs only when triggered via repository_dispatch after a new upstream BCHD release.
+      - name: Auto-bump version for upstream release
+        if: github.event_name == 'repository_dispatch'
+        run: |
+          set -euo pipefail
+          DISPATCHED_TAG="${{ github.event.client_payload.tag }}"
+          echo "Upstream release dispatched: $DISPATCHED_TAG"
+
+          CURRENT_VAR=$(grep -E '^[[:space:]]*current:' startos/versions/index.ts | head -1 \
+            | sed -E 's/.*current:[[:space:]]*([A-Za-z0-9_]+).*/\1/')
+          VERSION_FILE_BASE=$(echo "$CURRENT_VAR" | sed -E 's/^v_//; s/_/./g')
+          CURRENT_VERSION=$(grep -E "version:[[:space:]]*'" "startos/versions/v${VERSION_FILE_BASE}.ts" \
+            | head -1 | sed -E "s/.*version:[[:space:]]*'([^']+)'.*/\1/")
+          CURRENT_UPSTREAM="${CURRENT_VERSION%%:*}"
+
+          # Strip leading 'v' from tag for comparison (gcash/bchd tags as v0.22.0)
+          CLEAN_TAG="${DISPATCHED_TAG#v}"
+
+          if [ "$CURRENT_UPSTREAM" = "$CLEAN_TAG" ]; then
+            echo "Already at $CLEAN_TAG — no bump needed"
+            exit 0
+          fi
+          echo "Bumping $CURRENT_UPSTREAM -> $CLEAN_TAG"
+
+          TAG_VAR="v_$(echo "$CLEAN_TAG" | tr '.' '_')_0"
+          NEW_VERSION="${CLEAN_TAG}:0"
+          NEW_FILE="startos/versions/v${CLEAN_TAG}.0.ts"
+
+          echo "import { VersionInfo } from '@start9labs/start-sdk'" > "$NEW_FILE"
+          echo "" >> "$NEW_FILE"
+          echo "export const ${TAG_VAR} = VersionInfo.of({" >> "$NEW_FILE"
+          echo "  version: '${NEW_VERSION}'," >> "$NEW_FILE"
+          echo "  releaseNotes: 'Upstream ${DISPATCHED_TAG}.'," >> "$NEW_FILE"
+          echo "  migrations: {" >> "$NEW_FILE"
+          echo "    up: async ({ effects }) => {}," >> "$NEW_FILE"
+          echo "    down: async ({ effects }) => {}," >> "$NEW_FILE"
+          echo "  }," >> "$NEW_FILE"
+          echo "})" >> "$NEW_FILE"
+
+          # Update Dockerfile BCHD_VERSION build arg
+          sed -i "s|ARG BCHD_VERSION=v[0-9][0-9.]*|ARG BCHD_VERSION=${DISPATCHED_TAG}|" Dockerfile
+
+          # Update versions/index.ts
+          sed -i "1a import { ${TAG_VAR} } from './${CLEAN_TAG}.0'" startos/versions/index.ts
+          sed -i "s/current: ${CURRENT_VAR}/current: ${TAG_VAR}/" startos/versions/index.ts
+          sed -i "s/other: \[/other: [${CURRENT_VAR}, /" startos/versions/index.ts
+
+          git add startos/versions/index.ts "$NEW_FILE" Dockerfile
+          git commit -m "feat: auto-bump to upstream ${DISPATCHED_TAG} (v${NEW_VERSION})"
+          git push origin master
+          echo "Version bump committed — continuing build"
         shell: bash
 
       - name: Build service packages
@@ -69,8 +124,6 @@ jobs:
 
       - name: Move release tags to current commit
         run: |
-          git config user.email "action@github.com"
-          git config user.name "GitHub Action"
           git tag -f "${{ steps.meta.outputs.vtag }}"
           git push origin -f "${{ steps.meta.outputs.vtag }}"
 
