@@ -3,12 +3,17 @@ name: Tag and Release
 on:
   push:
     branches: ['master']
-    paths-ignore: ['README.md']
+    paths-ignore: ['README.md', 'Dockerfile.binary', 'patches/**']
   repository_dispatch:
     types: [upstream-release]
+  workflow_run:
+    workflows: ['Build Binary Image']
+    types: [completed]
+    branches: [master]
 
 permissions:
   contents: write
+  packages: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -16,6 +21,9 @@ concurrency:
 
 jobs:
   release:
+    if: >-
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Setup build environment
@@ -35,6 +43,13 @@ jobs:
             start-cli init-key
           fi
         shell: bash
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       # Runs only when triggered via repository_dispatch after a new upstream BCHD release.
       - name: Auto-bump version for upstream release
