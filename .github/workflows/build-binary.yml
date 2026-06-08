@@ -44,3 +44,5 @@ jobs:
           tags: |
             ghcr.io/bitcoincash1/bchd-binary:latest
             ghcr.io/bitcoincash1/bchd-binary:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/BitcoinCash1/bitcoin-cash-daemon-startos
