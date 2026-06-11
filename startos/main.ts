@@ -15,6 +15,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
     NETWORKS.includes(store?.network as Network) ? (store!.network as Network) : 'mainnet'
   const { rpc: rpcPort, peer: peerPort, grpc: grpcPort } = networkPorts[network]
   const netFlag = networkFlag[network]
+  const netLabel = network.charAt(0).toUpperCase() + network.slice(1)
   const activeCred = store?.rpcCredentials?.[0]
   const rpcUser = activeCred?.username ?? store?.rpcUser ?? 'bchd'
   const rpcPassword = activeCred?.password ?? store?.rpcPassword ?? ''
@@ -296,12 +297,12 @@ export const main = sdk.setupMain(async ({ effects }) => {
                 : info.headers > 0 ? ((info.blocks / info.headers) * 100).toFixed(2) : '0.00'
               const target = syncHeight > 0 ? syncHeight : info.headers
               return {
-                message: `Syncing blocks... ${pct}% (${info.blocks.toLocaleString()}/${target.toLocaleString()})`,
+                message: `Syncing blocks... ${pct}% (${info.blocks.toLocaleString()}/${target.toLocaleString()}) [${netLabel}]`,
                 result: 'loading',
               }
             }
             return {
-              message: `Synced — block ${info.blocks.toLocaleString()}`,
+              message: `Synced — block ${info.blocks.toLocaleString()} (${netLabel})`,
               result: 'success',
             }
           } catch {
