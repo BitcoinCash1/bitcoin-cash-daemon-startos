@@ -70,10 +70,15 @@ export const main = sdk.setupMain(async ({ effects }) => {
     bchdArgs.push(`--externalip=${ip}`)
   }
 
-  // txindex / addrindex (conditional)
+  // txindex / addrindex (conditional, incompatible with fastsync)
   if (conf?.txindex === 1 || conf?.txindex === true) {
     bchdArgs.push('--txindex')
     bchdArgs.push('--addrindex')
+  }
+
+  // fastsync: skip block validation before latest checkpoint (incompatible with txindex/addrindex)
+  if (conf?.fastsync === 1 || conf?.fastsync === true) {
+    bchdArgs.push('--fastsync')
   }
 
   if (torIp) {

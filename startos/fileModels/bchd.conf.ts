@@ -18,6 +18,7 @@ export const ALL_ONLYNETS = Object.keys(ONLYNET_VALUES) as OnlynetKey[]
 export const shape = z.object({
   txindex: z.union([z.literal(1), z.literal(0), z.boolean()]).catch(1),
   addrindex: z.union([z.literal(1), z.literal(0), z.boolean()]).catch(1),
+  fastsync: z.union([z.literal(1), z.literal(0), z.boolean()]).catch(0),
   rpcuser: z.string().catch('bchd'),
   rpcpass: z.string().catch(''),
   rpclisten: z.string().catch('0.0.0.0:8332'),
@@ -46,8 +47,16 @@ export const fullConfigSpec = sdk.InputSpec.of({
   txindex: sdk.Value.toggle({
     name: 'Transaction Index',
     description:
-      'Build a full transaction index. Required by Fulcrum and other indexers. Cannot be enabled with pruning.',
+      'Build a full transaction index. Required by Fulcrum and other indexers. Cannot be enabled with pruning or Fast Sync.',
     default: true,
+  }),
+  fastsync: sdk.Value.toggle({
+    name: 'Fast Sync',
+    description:
+      'Skip downloading and processing all blocks before the latest hardcoded checkpoint (height 661,648). BCHD starts from the checkpoint UTXO state and only syncs forward from there, dramatically reducing initial sync time. If the node is already past height 661,648, this flag is automatically ignored. Incompatible with Transaction Index and Address Index — enabling Fast Sync will automatically disable both.',
+    warning:
+      'Fast Sync disables the Transaction Index and Address Index. Fulcrum and address-based queries will not work for any blocks. Any existing txindex/addrindex data in the database is not deleted but will be inconsistent going forward.',
+    default: false,
   }),
   prune: sdk.Value.number({
     name: 'Prune Depth',

@@ -16,6 +16,7 @@ export const nodeSettings = sdk.Action.withInput(
 
   fullConfigSpec.filter({
     txindex: true,
+    fastsync: true,
     prune: true,
     grpcEnabled: true,
     peerbloomfilters: true,
@@ -29,6 +30,7 @@ export const nodeSettings = sdk.Action.withInput(
     const store = await storeJson.read().once()
     return {
       txindex: conf?.txindex === 1 || conf?.txindex === true,
+      fastsync: conf?.fastsync === 1 || conf?.fastsync === true,
       prune: store?.pruneDepth ?? 0,
       grpcEnabled: (conf?.grpclisten ?? '') !== '',
       peerbloomfilters: conf?.nopeerbloomfilters !== 1,
@@ -39,10 +41,14 @@ export const nodeSettings = sdk.Action.withInput(
   },
 
   async ({ effects, input }) => {
-    const txindex = input.prune && input.prune > 0 ? false : input.txindex
+    // fastsync and txindex/addrindex are mutually exclusive (BCHD upstream enforces this).
+    // Prune also disables txindex. fastsync takes priority over txindex when both are set.
+    const fastsync = input.fastsync
+    const txindex = fastsync || (input.prune && input.prune > 0) ? false : input.txindex
     await bchdConf.merge(effects, {
       txindex: txindex ? 1 : 0,
       addrindex: txindex ? 1 : 0,
+      fastsync: fastsync ? 1 : 0,
       grpclisten: input.grpcEnabled ? '0.0.0.0:8335' : '',
       nopeerbloomfilters: input.peerbloomfilters ? 0 : 1,
       nocfilters: input.cfindex ? 0 : 1,
