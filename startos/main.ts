@@ -66,22 +66,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
     bchdArgs.push(`--onlynet=${net}`)
   }
 
-  const fullySynced = store?.fullySynced ?? false
-  const torProxyActive = Boolean(torIp && fullySynced)
-
-  // Advertise externalip endpoints for inbound peers (written by watchHosts).
-  // Onion externalips require an active Tor proxy — otherwise BCHD tries to
-  // DNS-resolve the .onion and drops it with
-  //   "[WRN] SRVR: Not adding <addr>.onion:<port> as externalip: attempt to
-  //    resolve tor address"
-  // which permanently omits the address from localaddresses for the run. We
-  // skip onion externalips while Tor is deferred (IBD); they are re-applied
-  // on the restart that happens when fullySynced flips to true.
   for (const ip of externalip) {
-    if (ip.includes('.onion') && !torProxyActive) {
-      console.log(`Deferring onion externalip until Tor proxy is active: ${ip}`)
-      continue
-    }
     bchdArgs.push(`--externalip=${ip}`)
   }
 
@@ -91,15 +76,12 @@ export const main = sdk.setupMain(async ({ effects }) => {
     bchdArgs.push('--addrindex')
   }
 
-  // Tor proxy args — skipped during IBD to avoid crippling sync speed
-  if (torProxyActive) {
+  if (torIp) {
     bchdArgs.push(`--proxy=${torIp}:9050`)
     bchdArgs.push(`--onion=${torIp}:9050`)
     if (store?.torIsolation) {
       bchdArgs.push('--torisolation')
     }
-  } else if (torEnabled && !fullySynced) {
-    console.log('Tor routing deferred until initial block download completes')
   }
 
   if (grpcEnabled) {
@@ -174,6 +156,15 @@ export const main = sdk.setupMain(async ({ effects }) => {
       `--rpccert=${rootDir}/rpc.cert`,
       ...args,
     ])
+  }
+
+  async function rpcWithRetry(...args: string[]) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const res = await rpc(...args)
+      if (res.exitCode === 0) return res
+      if (attempt < 2) await new Promise<void>(r => setTimeout(r, 2000))
+    }
+    return rpc(...args)
   }
 
   async function grpcReady() {
@@ -258,7 +249,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
         display: 'Blockchain Sync',
         fn: async () => {
           try {
-            const res = await rpc('getblockchaininfo')
+            const res = await rpcWithRetry('getblockchaininfo')
             if (res.exitCode !== 0)
               return { message: 'Waiting for sync info', result: 'loading' }
             const info = JSON.parse(res.stdout.toString()) as {
@@ -330,7 +321,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
         display: 'Peer Connections',
         fn: async () => {
           try {
-            const res = await rpc('getpeerinfo')
+            const res = await rpcWithRetry('getpeerinfo')
             if (res.exitCode !== 0)
               return { message: 'Unable to query peers', result: 'loading' }
             const peers = JSON.parse(res.stdout.toString()) as Array<{
@@ -394,11 +385,6 @@ export const main = sdk.setupMain(async ({ effects }) => {
             return { result: 'disabled' as const, message: 'Tor is not running' }
           if (onlynetActive && !onlynetList.includes('onion'))
             return excludedByOnlynet()
-          if (!fullySynced)
-            return {
-              result: 'loading' as const,
-              message: 'Tor proxy configured — will activate automatically after initial block download completes (normal during first sync)',
-            }
           return {
             result: 'success' as const,
             message: externalip.some((ip) => ip.includes('.onion'))
