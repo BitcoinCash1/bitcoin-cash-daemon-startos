@@ -318,6 +318,12 @@ export const main = sdk.setupMain(async ({ effects }) => {
           if (!currentStore?.fullySynced) {
             await storeJson.merge(effects, { fullySynced: true })
           }
+          // Auto-disable fastsync once fully synced — BCHD silently ignores it
+          // past checkpoint 661,648 anyway; clearing the flag keeps the UI honest.
+          const currentConf = await bchdConf.read().once()
+          if (currentConf?.fastsync) {
+            await bchdConf.merge(effects, { fastsync: 0 })
+          }
           return null
         },
       },
