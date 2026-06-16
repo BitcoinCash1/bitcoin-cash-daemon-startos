@@ -77,8 +77,10 @@ export const main = sdk.setupMain(async ({ effects }) => {
   }
 
   if (torIp) {
-    bchdArgs.push(`--proxy=${torIp}:9050`)
     bchdArgs.push(`--onion=${torIp}:9050`)
+    if (onionOnly) {
+      bchdArgs.push(`--proxy=${torIp}:9050`)
+    }
     if (store?.torIsolation) {
       bchdArgs.push('--torisolation')
     }
