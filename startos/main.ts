@@ -316,13 +316,13 @@ export const main = sdk.setupMain(async ({ effects }) => {
             await storeJson.merge(effects, { fullySynced: true })
           }
           // Auto-disable fastsync once fully synced — BCHD silently ignores it
-          // past checkpoint 661,648 anyway; clearing the flag keeps the UI honest.
+          // past the checkpoint anyway; clearing the flag keeps the UI honest.
           const currentConf = await bchdConf.read().once()
           if (currentConf?.fastsync) {
             await bchdConf.merge(effects, { fastsync: 0 })
-            // Mark that fastsync was used on this data directory. Blocks 0–661,647
-            // were never downloaded, so txindex is permanently unavailable until
-            // chain data is deleted and the node re-syncs from genesis.
+            // Mark that fastsync was used on this data directory. Pre-checkpoint
+            // blocks were never downloaded, so txindex is permanently unavailable
+            // until chain data is deleted and the node re-syncs from genesis.
             await storeJson.merge(effects, { fastSyncUsed: true })
           }
           return null

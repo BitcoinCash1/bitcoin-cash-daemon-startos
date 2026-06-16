@@ -30,7 +30,7 @@ export const nodeSettings = sdk.Action.withInput(
     const store = await storeJson.read().once()
     const fastSyncUsed = store?.fastSyncUsed ?? false
     return {
-      // Locked to false when fastSyncUsed: blocks 0-661,647 were never downloaded.
+      // Locked to false when fastSyncUsed: early blocks were never downloaded.
       txindex: fastSyncUsed ? false : (conf?.txindex === 1 || conf?.txindex === true),
       fastsync: conf?.fastsync === 1 || conf?.fastsync === true,
       prune: store?.pruneDepth ?? 0,
@@ -47,9 +47,8 @@ export const nodeSettings = sdk.Action.withInput(
     const fastSyncUsed = store?.fastSyncUsed ?? false
 
     // fastsync and txindex/addrindex are mutually exclusive — mirroring upstream
-    // BCHD config.go which hard-exits if both flags are set. fastSyncUsed means
-    // blocks 0-661,647 were never downloaded; enabling txindex would crash BCHD
-    // at startup when the indexer catchup loop tries to fetch those missing blocks.
+    // BCHD which hard-exits if both flags are set. fastSyncUsed means early blocks
+    // were never downloaded; enabling txindex would crash BCHD at startup.
     const fastsync = input.fastsync
     const txindex = fastSyncUsed || fastsync || (input.prune && input.prune > 0)
       ? false
@@ -75,7 +74,7 @@ export const nodeSettings = sdk.Action.withInput(
         title: 'Transaction Index Unavailable',
         message:
           'Transaction Index cannot be enabled because Fast Sync was used during initial sync. ' +
-          'Blocks 0–661,647 were never downloaded and cannot be indexed. ' +
+          'Pre-checkpoint blocks were never downloaded and cannot be indexed. ' +
           'To use txindex: run Maintenance → Delete Mainnet Data, then re-sync from genesis with Fast Sync disabled.',
         result: null,
       }
