@@ -28,8 +28,10 @@ export const nodeSettings = sdk.Action.withInput(
   async ({ effects }) => {
     const conf = await bchdConf.read().once()
     const store = await storeJson.read().once()
+    const fastSyncUsed = store?.fastSyncUsed ?? false
     return {
-      txindex: conf?.txindex === 1 || conf?.txindex === true,
+      // Locked to false when fastSyncUsed: blocks 0-661,647 were never downloaded.
+      txindex: fastSyncUsed ? false : (conf?.txindex === 1 || conf?.txindex === true),
       fastsync: conf?.fastsync === 1 || conf?.fastsync === true,
       prune: store?.pruneDepth ?? 0,
       grpcEnabled: (conf?.grpclisten ?? '') !== '',
@@ -41,10 +43,18 @@ export const nodeSettings = sdk.Action.withInput(
   },
 
   async ({ effects, input }) => {
-    // fastsync and txindex/addrindex are mutually exclusive (BCHD upstream enforces this).
-    // Prune also disables txindex. fastsync takes priority over txindex when both are set.
+    const store = await storeJson.read().once()
+    const fastSyncUsed = store?.fastSyncUsed ?? false
+
+    // fastsync and txindex/addrindex are mutually exclusive — mirroring upstream
+    // BCHD config.go which hard-exits if both flags are set. fastSyncUsed means
+    // blocks 0-661,647 were never downloaded; enabling txindex would crash BCHD
+    // at startup when the indexer catchup loop tries to fetch those missing blocks.
     const fastsync = input.fastsync
-    const txindex = fastsync || (input.prune && input.prune > 0) ? false : input.txindex
+    const txindex = fastSyncUsed || fastsync || (input.prune && input.prune > 0)
+      ? false
+      : input.txindex
+
     await bchdConf.merge(effects, {
       txindex: txindex ? 1 : 0,
       addrindex: txindex ? 1 : 0,
@@ -58,6 +68,18 @@ export const nodeSettings = sdk.Action.withInput(
     await storeJson.merge(effects, {
       pruneDepth: input.prune && input.prune > 0 ? Math.max(input.prune, 288) : 0,
     })
+
+    if (fastSyncUsed && input.txindex) {
+      return {
+        version: '1' as const,
+        title: 'Transaction Index Unavailable',
+        message:
+          'Transaction Index cannot be enabled because Fast Sync was used during initial sync. ' +
+          'Blocks 0–661,647 were never downloaded and cannot be indexed. ' +
+          'To use txindex: run Maintenance → Delete Mainnet Data, then re-sync from genesis with Fast Sync disabled.',
+        result: null,
+      }
+    }
     return null
   },
 )

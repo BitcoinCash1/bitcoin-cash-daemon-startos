@@ -55,7 +55,7 @@ export const fullConfigSpec = sdk.InputSpec.of({
     description:
       'Skip downloading and processing all blocks before the latest hardcoded checkpoint (height 661,648). BCHD starts from the checkpoint UTXO state and only syncs forward from there, dramatically reducing initial sync time. If the node is already past height 661,648, this flag is automatically ignored. Incompatible with Transaction Index and Address Index — enabling Fast Sync will automatically disable both.',
     warning:
-      'Fast Sync disables the Transaction Index and Address Index. Fulcrum and address-based queries will not work for any blocks. Any existing txindex/addrindex data in the database is not deleted but will be inconsistent going forward.',
+      'PERMANENT: Once Fast Sync is used, Transaction Index is locked out for the lifetime of this data directory. Blocks 0–661,647 are never downloaded and cannot be indexed retroactively. If you later need txindex (required by Fulcrum), you must run Maintenance → Delete Mainnet Data and re-sync from genesis. This is enforced by BCHD upstream.',
     default: false,
   }),
   prune: sdk.Value.number({
