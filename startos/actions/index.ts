@@ -8,7 +8,6 @@ import { mempoolSettings } from './mempoolSettings'
 import { viewRpcCredentials } from './viewRpcCredentials'
 import { generateRpcCredential } from './generateRpcCredential'
 import { deleteRpcCredentials } from './deleteRpcCredentials'
-import { reindexBlockchain } from './reindexBlockchain'
 import { reindexChainstate } from './reindexChainstate'
 import { deletePeers } from './deletePeers'
 import { deleteTestNetworkData } from './deleteTestNetworkData'
@@ -29,7 +28,6 @@ export const actions = sdk.Actions.of()
   .addAction(generateRpcCredential)
   .addAction(deleteRpcCredentials)
   // ── Maintenance ─────────────────────────────────────────────────────────────
-  .addAction(reindexBlockchain)
   .addAction(reindexChainstate)
   .addAction(deletePeers)
   .addAction(deleteTestNetworkData)

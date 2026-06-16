@@ -28,10 +28,9 @@ export const main = sdk.setupMain(async ({ effects }) => {
   const externalip = (store?.externalip ?? []).filter(Boolean)
 
   // Read and clear reindex flags
-  const reindexBlockchain = store?.reindexBlockchain ?? false
   const reindexChainstate = store?.reindexChainstate ?? false
-  if (reindexBlockchain || reindexChainstate) {
-    await storeJson.merge(effects, { reindexBlockchain: false, reindexChainstate: false })
+  if (reindexChainstate) {
+    await storeJson.merge(effects, { reindexChainstate: false })
   }
 
   // Tor — get container IP (restarts BCHD if it changes)
@@ -95,10 +94,8 @@ export const main = sdk.setupMain(async ({ effects }) => {
     bchdArgs.push(`--grpclisten=0.0.0.0:${grpcPort}`)
   }
 
-  // Reindex flags (cleared from store above so they only apply once)
-  if (reindexBlockchain) {
-    bchdArgs.push('--reindex')
-  } else if (reindexChainstate) {
+  // Reindex chainstate (cleared from store above so it only applies once)
+  if (reindexChainstate) {
     bchdArgs.push('--reindexchainstate')
   }
 
