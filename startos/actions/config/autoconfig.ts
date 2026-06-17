@@ -36,7 +36,7 @@ export const autoconfig = sdk.Action.withInput(
       prune: store?.pruneDepth ?? 0,
       grpcEnabled: (conf?.grpclisten ?? '') !== '',
       cfindex: conf?.nocfilters !== 1,
-      dbcachesize: conf?.dbcachesize ?? 2048,
+      dbcachesize: conf?.dbcachesize ?? 450,
       dbflushinterval: conf?.dbflushinterval ?? 1800,
       maxpeers: conf?.maxpeers ?? 125,
       onlynet: onlynetFromConf.length > 0 ? (onlynetFromConf as OnlynetKey[]) : [...ALL_ONLYNETS],
@@ -63,7 +63,7 @@ export const autoconfig = sdk.Action.withInput(
       nocfilters: cfindex === false ? 1 : 0,
       onlynet: writeOnlynet,
       nopeerbloomfilters: peerbloomfilters === false ? 1 : 0,
-      dbcachesize: dbcachesize ?? 2048,
+      dbcachesize: dbcachesize ?? 450,
       dbflushinterval: dbflushinterval ?? 1800,
       maxpeers: maxpeers ?? 125,
     }

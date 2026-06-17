@@ -37,7 +37,7 @@ export const nodeSettings = sdk.Action.withInput(
       grpcEnabled: (conf?.grpclisten ?? '') !== '',
       peerbloomfilters: conf?.nopeerbloomfilters !== 1,
       cfindex: conf?.nocfilters !== 1,
-      dbcachesize: conf?.dbcachesize ?? 2048,
+      dbcachesize: conf?.dbcachesize ?? 450,
       dbflushinterval: conf?.dbflushinterval ?? 1800,
     }
   },

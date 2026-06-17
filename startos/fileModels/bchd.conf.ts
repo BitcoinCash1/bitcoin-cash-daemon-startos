@@ -26,7 +26,7 @@ export const shape = z.object({
   grpclisten: z.string().catch('0.0.0.0:8335'),
   nocfilters: z.union([z.literal(1), z.literal(0)]).catch(0),
   nopeerbloomfilters: z.union([z.literal(1), z.literal(0)]).catch(0),
-  dbcachesize: iniNumber.catch(2048),
+  dbcachesize: iniNumber.catch(450),
   dbflushinterval: iniNumber.catch(1800),
   maxpeers: iniNumber.catch(125),
   onlynet: iniStringArray,
@@ -80,9 +80,9 @@ export const fullConfigSpec = sdk.InputSpec.of({
   dbcachesize: sdk.Value.number({
     name: 'Database Cache (MiB)',
     description:
-      'Size of the in-memory database cache. Larger values speed up IBD and general operation at the cost of RAM usage.',
+      'Size of the LevelDB block cache. BCHD also maintains a separate 450 MiB UTXO cache internally. On systems with 4 GB RAM or less, keep this at 450 MiB or lower to avoid swap thrashing during IBD.',
     required: true,
-    default: 2048,
+    default: 450,
     min: 64,
     max: 16384,
     integer: true,

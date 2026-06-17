@@ -111,9 +111,11 @@ export const main = sdk.setupMain(async ({ effects }) => {
     bchdArgs.push(`--prunedepth=${pruneDepth}`)
   }
 
-  if (conf?.dbcachesize) {
-    bchdArgs.push(`--dbcachesize=${conf.dbcachesize}`)
-  }
+  // The pre-v0.22.0:16 default was 2048 MiB — 4× BCHD's native 500 MiB default.
+  // On systems with ≤ 4 GB RAM this causes swap thrashing during IBD.
+  // Treat exactly 2048 as "not set by user" and use 450 MiB instead.
+  const effectiveDbcache = conf?.dbcachesize === 2048 ? 450 : (conf?.dbcachesize ?? 450)
+  bchdArgs.push(`--dbcachesize=${effectiveDbcache}`)
   if (conf?.maxpeers != null) {
     bchdArgs.push(`--maxpeers=${conf.maxpeers}`)
   }
