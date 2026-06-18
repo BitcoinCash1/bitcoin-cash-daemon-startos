@@ -22,6 +22,7 @@ export const nodeSettings = sdk.Action.withInput(
     peerbloomfilters: true,
     cfindex: true,
     dbcachesize: true,
+    utxocachemaxsize: true,
     dbflushinterval: true,
   }),
 
@@ -38,6 +39,7 @@ export const nodeSettings = sdk.Action.withInput(
       peerbloomfilters: conf?.nopeerbloomfilters !== 1,
       cfindex: conf?.nocfilters !== 1,
       dbcachesize: conf?.dbcachesize ?? 450,
+      utxocachemaxsize: conf?.utxocachemaxsize ?? 1024,
       dbflushinterval: conf?.dbflushinterval ?? 1800,
     }
   },
@@ -62,6 +64,7 @@ export const nodeSettings = sdk.Action.withInput(
       nopeerbloomfilters: input.peerbloomfilters ? 0 : 1,
       nocfilters: input.cfindex ? 0 : 1,
       dbcachesize: input.dbcachesize,
+      utxocachemaxsize: input.utxocachemaxsize,
       dbflushinterval: input.dbflushinterval,
     })
     await storeJson.merge(effects, {

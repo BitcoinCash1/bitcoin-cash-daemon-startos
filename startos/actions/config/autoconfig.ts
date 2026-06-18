@@ -37,6 +37,7 @@ export const autoconfig = sdk.Action.withInput(
       grpcEnabled: (conf?.grpclisten ?? '') !== '',
       cfindex: conf?.nocfilters !== 1,
       dbcachesize: conf?.dbcachesize ?? 450,
+      utxocachemaxsize: conf?.utxocachemaxsize ?? 1024,
       dbflushinterval: conf?.dbflushinterval ?? 1800,
       maxpeers: conf?.maxpeers ?? 125,
       onlynet: onlynetFromConf.length > 0 ? (onlynetFromConf as OnlynetKey[]) : [...ALL_ONLYNETS],
@@ -50,7 +51,7 @@ export const autoconfig = sdk.Action.withInput(
   },
 
   async ({ effects, input }) => {
-    const { torEnabled, torIsolation, prune, txindex, grpcEnabled, cfindex, onlynet, onionOnly, peerbloomfilters, dbcachesize, dbflushinterval, maxpeers, excessiveblocksize, minrelaytxfee } = input as any
+    const { torEnabled, torIsolation, prune, txindex, grpcEnabled, cfindex, onlynet, onionOnly, peerbloomfilters, dbcachesize, utxocachemaxsize, dbflushinterval, maxpeers, excessiveblocksize, minrelaytxfee } = input as any
     const onlynetList = (onlynet as string[] | undefined)?.filter(Boolean) ?? []
     const allSelected = ['ipv4', 'ipv6', 'onion'].every((n) => onlynetList.includes(n))
     const writeOnlynet = onionOnly ? ['onion'] : (onlynetList.length > 0 && !allSelected ? onlynetList : undefined)
@@ -64,6 +65,7 @@ export const autoconfig = sdk.Action.withInput(
       onlynet: writeOnlynet,
       nopeerbloomfilters: peerbloomfilters === false ? 1 : 0,
       dbcachesize: dbcachesize ?? 450,
+      utxocachemaxsize: utxocachemaxsize ?? 1024,
       dbflushinterval: dbflushinterval ?? 1800,
       maxpeers: maxpeers ?? 125,
     }
