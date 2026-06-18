@@ -27,6 +27,7 @@ export const shape = z.object({
   nocfilters: z.union([z.literal(1), z.literal(0)]).catch(0),
   nopeerbloomfilters: z.union([z.literal(1), z.literal(0)]).catch(0),
   dbcachesize: iniNumber.catch(450),
+  utxocachemaxsize: iniNumber.catch(1024),
   dbflushinterval: iniNumber.catch(1800),
   maxpeers: iniNumber.catch(125),
   onlynet: iniStringArray,
@@ -80,10 +81,21 @@ export const fullConfigSpec = sdk.InputSpec.of({
   dbcachesize: sdk.Value.number({
     name: 'Database Cache (MiB)',
     description:
-      'Size of the LevelDB block cache. BCHD also maintains a separate 450 MiB UTXO cache internally. On systems with 4 GB RAM or less, keep this at 450 MiB or lower to avoid swap thrashing during IBD.',
+      'Size of the LevelDB block/raw database cache. Controls how aggressively BCHD buffers raw block and chain state writes before flushing to disk. On systems with 4 GB RAM or less, keep this at 450 MiB or lower to avoid swap thrashing during IBD.',
     required: true,
     default: 450,
     min: 64,
+    max: 16384,
+    integer: true,
+    units: 'MiB',
+  }),
+  utxocachemaxsize: sdk.Value.number({
+    name: 'UTXO Cache (MiB)',
+    description:
+      'Maximum RAM allocated to the in-memory UTXO set cache. Larger values eliminate UTXO disk I/O during IBD, which is one of the main sync bottlenecks. The BCH UTXO set is approximately 1–2 GiB; setting this to 2048 on a machine with 8+ GB RAM eliminates most UTXO I/O. BCHD default: 450 MiB.',
+    required: true,
+    default: 1024,
+    min: 100,
     max: 16384,
     integer: true,
     units: 'MiB',
@@ -147,8 +159,8 @@ export const fullConfigSpec = sdk.InputSpec.of({
   torIsolation: sdk.Value.toggle({
     name: 'Tor Stream Isolation',
     description:
-      'Use a separate Tor circuit for each peer connection (torisolation) when Tor proxying is active. Provides stronger privacy at the cost of slightly slower connection establishment.',
-    default: true,
+      'Use a separate Tor circuit for each peer connection (torisolation) when Tor proxying is active. Provides stronger privacy but causes aggressive peer churn during IBD — peers connect and drop in seconds, slowing sync significantly. Disable during Initial Block Download and re-enable after the node is fully synced.',
+    default: false,
   }),
   advertiseClearnetInbound: sdk.Value.toggle({
     name: 'Advertise Clearnet Inbound',

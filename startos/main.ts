@@ -116,6 +116,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
   // Treat exactly 2048 as "not set by user" and use 450 MiB instead.
   const effectiveDbcache = conf?.dbcachesize === 2048 ? 450 : (conf?.dbcachesize ?? 450)
   bchdArgs.push(`--dbcachesize=${effectiveDbcache}`)
+  bchdArgs.push(`--utxocachemaxsize=${conf?.utxocachemaxsize ?? 1024}`)
   if (conf?.maxpeers != null) {
     bchdArgs.push(`--maxpeers=${conf.maxpeers}`)
   }

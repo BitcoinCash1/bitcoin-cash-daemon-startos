@@ -19,7 +19,7 @@ export const shape = z.object({
   reindexBlockchain: z.boolean().catch(false),
   reindexChainstate: z.boolean().catch(false),
   torEnabled: z.boolean().catch(true),
-  torIsolation: z.boolean().catch(true),
+  torIsolation: z.boolean().catch(false),
   pruneDepth: z.number().catch(0),
   advertiseClearnetInbound: z.boolean().catch(false),
   externalip: z.array(z.string()).catch([]),
