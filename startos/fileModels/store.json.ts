@@ -23,6 +23,11 @@ export const shape = z.object({
   pruneDepth: z.number().catch(0),
   advertiseClearnetInbound: z.boolean().catch(false),
   externalip: z.array(z.string()).catch([]),
+  // Per-index catch-up tracking: set when an index transitions off→on so the
+  // health check can label which index is rebuilding from genesis. Cleared when
+  // the index is turned off or when BCHD reports "Indexes caught up".
+  txindexCatchupPending: z.boolean().catch(false),
+  addrindexCatchupPending: z.boolean().catch(false),
 })
 
 export const storeJson = FileHelper.json(

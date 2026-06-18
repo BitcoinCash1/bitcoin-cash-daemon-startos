@@ -33,6 +33,25 @@ export const main = sdk.setupMain(async ({ effects }) => {
     await storeJson.merge(effects, { reindexChainstate: false })
   }
 
+  // Per-index rebuild visibility (logs only). When an index is toggled on, BCHD
+  // rebuilds it from genesis on this start. BCHD's own log only shows an
+  // AGGREGATE "INDX: Indexed N blocks ... height H/Y (PP%)" line, so announce
+  // which index it is to make that progress attributable per-index. Flags are
+  // cleared by the 'clear-index-pending' oneshot once RPC confirms catch-up done.
+  if (store?.txindexCatchupPending) {
+    console.log(
+      '[Index Rebuild] Transaction Index is (re)building from genesis on this start. ' +
+      'Live progress follows as "INDX: Indexed N blocks ... height H/Y (PP%)" log lines.',
+    )
+  }
+  if (store?.addrindexCatchupPending) {
+    console.log(
+      '[Index Rebuild] Address Index is (re)building from genesis on this start ' +
+      '(the slow index — upstream bchd issue #219). ' +
+      'Live progress follows as "INDX: Indexed N blocks ... height H/Y (PP%)" log lines.',
+    )
+  }
+
   // Tor — get container IP (restarts BCHD if it changes)
   const torIp = torEnabled
     ? await sdk.getContainerIp(effects, { packageId: 'tor' }).const()
@@ -69,14 +88,20 @@ export const main = sdk.setupMain(async ({ effects }) => {
     bchdArgs.push(`--externalip=${ip}`)
   }
 
-  // txindex / addrindex (conditional, incompatible with fastsync)
-  if (conf?.txindex === 1 || conf?.txindex === true) {
+  // txindex / addrindex (independent toggles, both incompatible with fastsync).
+  // addrindex requires txindex; it's the slow index (issue #219) so it's only
+  // passed when explicitly enabled alongside txindex.
+  const txindexOn = conf?.txindex === 1
+  const addrindexOn = conf?.addrindex === 1
+  if (txindexOn) {
     bchdArgs.push('--txindex')
-    bchdArgs.push('--addrindex')
+    if (addrindexOn) {
+      bchdArgs.push('--addrindex')
+    }
   }
 
   // fastsync: skip block validation before latest checkpoint (incompatible with txindex/addrindex)
-  if (conf?.fastsync === 1 || conf?.fastsync === true) {
+  if (conf?.fastsync === 1) {
     bchdArgs.push('--fastsync')
   }
 
@@ -185,6 +210,37 @@ export const main = sdk.setupMain(async ({ effects }) => {
     return probe.exitCode === 0
   }
 
+  // Per-index rebuild progress (logs only). When an index is toggled on it
+  // rebuilds from genesis; BCHD logs a single AGGREGATE "INDX: Indexed N blocks
+  // ... height H/Y (PP%)" line. We re-emit it labeled per-index, gated by the
+  // store pending flags so a DISABLED index never prints (no phantom 0% spam).
+  // Both indexes catch up in lockstep (same height), so when both are pending
+  // the two lines correctly show the same %. Runs as a side effect of the
+  // sync-progress poll (no extra daemon / health-check row).
+  let lastIndexLine = ''
+  async function emitIndexRebuildProgress() {
+    try {
+      const s = await storeJson.read().once()
+      const txPending = s?.txindexCatchupPending === true
+      const adPending = s?.addrindexCatchupPending === true
+      if (!txPending && !adPending) return // nothing rebuilding → silent
+      const res = await bchdSub.exec([
+        'sh', '-c',
+        `f=$(ls -t /root/.bchd/logs/*/bchd.log "$HOME"/.bchd/logs/*/bchd.log 2>/dev/null | head -1); [ -n "$f" ] && grep -a Indexed "$f" | tail -1 || true`,
+      ])
+      if (res.exitCode !== 0) return
+      const m = res.stdout.toString().match(/height \d+\/\d+ \([\d.]+%\)/)
+      if (!m) return // no catch-up progress line yet
+      const hy = m[0].replace(/^height /, '')
+      if (hy === lastIndexLine) return // unchanged → don't repeat
+      lastIndexLine = hy
+      if (txPending) console.log(`[Index Rebuild] Transaction Index catch-up: ${hy}`)
+      if (adPending) console.log(`[Index Rebuild] Address Index catch-up: ${hy}`)
+    } catch {
+      // never let log-emission break the health check
+    }
+  }
+
   const excludedByOnlynet = () => ({
     result: 'disabled' as const,
     message: 'Excluded by onlynet',
@@ -247,10 +303,34 @@ export const main = sdk.setupMain(async ({ effects }) => {
       },
       requires: ['nocow'],
     })
+    .addOneshot('clear-index-pending', {
+      subcontainer: null,
+      exec: {
+        // 'primary' is ready only once RPC responds, which BCHD does only AFTER
+        // index catch-up completes (catch-up runs during startup before RPC).
+        // So reaching here means any pending index rebuild is finished — clear
+        // the flags so restarts don't re-announce a rebuild that already ran.
+        fn: async () => {
+          const currentStore = await storeJson.read().once()
+          if (currentStore?.txindexCatchupPending || currentStore?.addrindexCatchupPending) {
+            await storeJson.merge(effects, {
+              txindexCatchupPending: false,
+              addrindexCatchupPending: false,
+            })
+          }
+          return null
+        },
+      },
+      requires: ['primary'],
+    })
     .addHealthCheck('sync-progress', {
       ready: {
         display: 'Blockchain Sync',
         fn: async () => {
+          // Emit labeled per-index rebuild progress to the logs (no-op unless an
+          // index was just toggled on). Runs even while RPC is down during
+          // catch-up, since this poll fires regardless of RPC state.
+          await emitIndexRebuildProgress()
           try {
             const res = await rpcWithRetry('getblockchaininfo')
             if (res.exitCode !== 0)

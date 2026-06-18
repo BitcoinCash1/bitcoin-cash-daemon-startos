@@ -32,7 +32,10 @@ export const autoconfig = sdk.Action.withInput(
     const onlynetFromConf = (conf?.onlynet as string[] | undefined)?.filter(Boolean) ?? []
     const onionOnly = onlynetFromConf.length > 0 && onlynetFromConf.every((n) => n === 'onion')
     return {
-      txindex: conf?.txindex === 1 || conf?.txindex === true,
+      txindex: conf?.txindex === 1,
+      addrindex: (conf?.txindex === 1)
+        ? (conf?.addrindex === 1)
+        : false,
       prune: store?.pruneDepth ?? 0,
       grpcEnabled: (conf?.grpclisten ?? '') !== '',
       cfindex: conf?.nocfilters !== 1,
@@ -51,15 +54,19 @@ export const autoconfig = sdk.Action.withInput(
   },
 
   async ({ effects, input }) => {
-    const { torEnabled, torIsolation, prune, txindex, grpcEnabled, cfindex, onlynet, onionOnly, peerbloomfilters, dbcachesize, utxocachemaxsize, dbflushinterval, maxpeers, excessiveblocksize, minrelaytxfee } = input as any
+    const { torEnabled, torIsolation, prune, txindex, addrindex, grpcEnabled, cfindex, onlynet, onionOnly, peerbloomfilters, dbcachesize, utxocachemaxsize, dbflushinterval, maxpeers, excessiveblocksize, minrelaytxfee } = input as any
+    const prevConf = await bchdConf.read().once()
+    const prevStore = await storeJson.read().once()
     const onlynetList = (onlynet as string[] | undefined)?.filter(Boolean) ?? []
     const allSelected = ['ipv4', 'ipv6', 'onion'].every((n) => onlynetList.includes(n))
     const writeOnlynet = onionOnly ? ['onion'] : (onlynetList.length > 0 && !allSelected ? onlynetList : undefined)
     // Prune/txindex interlock
     const effectiveTxindex = prune && prune > 0 ? false : (txindex ?? true)
+    // addrindex requires txindex; default off.
+    const effectiveAddrindex = effectiveTxindex ? !!addrindex : false
     const confPatch: Record<string, unknown> = {
       txindex: effectiveTxindex ? 1 : 0,
-      addrindex: effectiveTxindex ? 1 : 0,
+      addrindex: effectiveAddrindex ? 1 : 0,
       grpclisten: grpcEnabled ? '0.0.0.0:8335' : '',
       nocfilters: cfindex === false ? 1 : 0,
       onlynet: writeOnlynet,
@@ -71,11 +78,22 @@ export const autoconfig = sdk.Action.withInput(
     }
     if (excessiveblocksize != null) confPatch.excessiveblocksize = excessiveblocksize
     if (minrelaytxfee != null) confPatch.minrelaytxfee = minrelaytxfee
+    // Per-index catch-up tracking (Part C): mark off→on transitions.
+    const prevTxindexOn = prevConf?.txindex === 1
+    const prevAddrindexOn = prevConf?.addrindex === 1
+    const txindexCatchupPending = !effectiveTxindex
+      ? false
+      : (!prevTxindexOn ? true : (prevStore?.txindexCatchupPending ?? false))
+    const addrindexCatchupPending = !effectiveAddrindex
+      ? false
+      : (!prevAddrindexOn ? true : (prevStore?.addrindexCatchupPending ?? false))
     await bchdConf.merge(effects, confPatch as any)
     await storeJson.merge(effects, {
       torEnabled: torEnabled ?? true,
       torIsolation: torIsolation ?? true,
       pruneDepth: prune && prune > 0 ? Math.max(prune, 288) : 0,
+      txindexCatchupPending,
+      addrindexCatchupPending,
     })
   },
 )

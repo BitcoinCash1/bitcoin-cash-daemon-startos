@@ -2,6 +2,20 @@ import { FileHelper, z } from '@start9labs/start-sdk'
 import { sdk } from '../sdk'
 
 const iniNumber = z.union([z.string().transform(Number), z.number()])
+
+// INI values are read back as STRINGS, so a 0/1 flag stored as "0"/"1" never
+// matches a numeric z.literal — it silently falls through to .catch(). Coerce
+// string/number/boolean forms to a normalized 0 | 1 so flags can actually be
+// turned OFF (e.g. addrindex=0). Consumers compare `=== 1`.
+const ini01 = z.union([
+  z.literal(0),
+  z.literal(1),
+  z.boolean().transform((b) => (b ? 1 : 0)),
+  z.string().transform((s) => {
+    const t = s.trim().toLowerCase()
+    return t === '1' || t === 'true' ? 1 : 0
+  }),
+])
 const iniStringArray = z
   .union([z.array(z.string()), z.string().transform((s) => [s])])
   .optional()
@@ -16,16 +30,16 @@ export type OnlynetKey = keyof typeof ONLYNET_VALUES
 export const ALL_ONLYNETS = Object.keys(ONLYNET_VALUES) as OnlynetKey[]
 
 export const shape = z.object({
-  txindex: z.union([z.literal(1), z.literal(0), z.boolean()]).catch(1),
-  addrindex: z.union([z.literal(1), z.literal(0), z.boolean()]).catch(1),
-  fastsync: z.union([z.literal(1), z.literal(0), z.boolean()]).catch(0),
+  txindex: ini01.catch(1),
+  addrindex: ini01.catch(0),
+  fastsync: ini01.catch(0),
   rpcuser: z.string().catch('bchd'),
   rpcpass: z.string().catch(''),
   rpclisten: z.string().catch('0.0.0.0:8332'),
   listen: z.string().catch('0.0.0.0:8333'),
   grpclisten: z.string().catch('0.0.0.0:8335'),
-  nocfilters: z.union([z.literal(1), z.literal(0)]).catch(0),
-  nopeerbloomfilters: z.union([z.literal(1), z.literal(0)]).catch(0),
+  nocfilters: ini01.catch(0),
+  nopeerbloomfilters: ini01.catch(0),
   dbcachesize: iniNumber.catch(450),
   utxocachemaxsize: iniNumber.catch(1024),
   dbflushinterval: iniNumber.catch(1800),
@@ -48,8 +62,14 @@ export const fullConfigSpec = sdk.InputSpec.of({
   txindex: sdk.Value.toggle({
     name: 'Transaction Index',
     description:
-      'Build a full transaction index. Required by Fulcrum and other indexers. Cannot be enabled with pruning or Fast Sync.',
+      'Build a full transaction index (look up any transaction by its txid). Required by Fulcrum and most block explorers. Light to build — kept in lockstep with block sync. Cannot be enabled with pruning or Fast Sync.',
     default: true,
+  }),
+  addrindex: sdk.Value.toggle({
+    name: 'Address Index',
+    description:
+      'Build the address index so BCHD can answer "all transactions for an address" queries directly (gRPC getAddressTransactions, etc.). This is the slow part of initial sync (upstream bchd issue #219) and can turn a 1-2 day sync into weeks — leave it OFF unless a consumer queries addresses straight from BCHD. Fulcrum and most explorers build their own address index and do NOT need this. Requires Transaction Index. Enabling it later rebuilds the index from genesis (a one-time catch-up).',
+    default: false,
   }),
   fastsync: sdk.Value.toggle({
     name: 'Fast Sync',
