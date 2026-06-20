@@ -47,7 +47,7 @@ export const autoconfig = sdk.Action.withInput(
       onionOnly,
       peerbloomfilters: conf?.nopeerbloomfilters !== 1,
       torEnabled: store?.torEnabled ?? true,
-      torIsolation: store?.torIsolation ?? true,
+      torIsolation: store?.torIsolation ?? false,
       excessiveblocksize: conf?.excessiveblocksize ?? 32000000,
       minrelaytxfee: conf?.minrelaytxfee ?? 0.00001,
     }
@@ -90,7 +90,7 @@ export const autoconfig = sdk.Action.withInput(
     await bchdConf.merge(effects, confPatch as any)
     await storeJson.merge(effects, {
       torEnabled: torEnabled ?? true,
-      torIsolation: torIsolation ?? true,
+      torIsolation: torIsolation ?? false,
       pruneDepth: prune && prune > 0 ? Math.max(prune, 288) : 0,
       txindexCatchupPending,
       addrindexCatchupPending,
