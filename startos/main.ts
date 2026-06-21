@@ -200,33 +200,6 @@ export const main = sdk.setupMain(async ({ effects }) => {
     return rpc(...args)
   }
 
-  // Run an RPC with a SHORT custom timeout and return parsed JSON, or null on
-  // any failure/timeout. During heavy-block IBD, bchd's RPC handlers that take
-  // the chain lock (getblockchaininfo, getpeerinfo) can stall for many seconds
-  // to minutes (measured: getpeerinfo 17s) and hit the 30s exec kill → exit≠0.
-  // Health checks must NOT hang on or fail because of that — they fall back to
-  // the cheap getinfo (~ms) instead. A non-null result means a clean call.
-  async function rpcJson(timeoutMs: number, ...args: string[]): Promise<any | null> {
-    try {
-      const res = await bchdSub.exec(
-        [
-          'bchctl',
-          `--rpcserver=127.0.0.1:${rpcPort}`,
-          `--rpcuser=${rpcUser}`,
-          `--rpcpass=${rpcPassword}`,
-          `--rpccert=${rootDir}/rpc.cert`,
-          ...args,
-        ],
-        undefined,
-        timeoutMs,
-      )
-      if (res.exitCode !== 0) return null
-      return JSON.parse(res.stdout.toString())
-    } catch {
-      return null
-    }
-  }
-
   async function grpcReady() {
     // Use a LISTEN-state check against /proc so we don't actually open a TCP
     // connection to the gRPC port. bchd's gRPC is HTTP/2 over TLS; any
@@ -247,12 +220,9 @@ export const main = sdk.setupMain(async ({ effects }) => {
   // ... height H/Y (PP%)" line. We re-emit it labeled per-index, gated by the
   // store pending flags so a DISABLED index never prints (no phantom 0% spam).
   // Both indexes catch up in lockstep (same height), so when both are pending
-  // the two lines correctly show the same %. Runs as a side effect of the
-  // sync-progress poll (no extra daemon / health-check row).
+  // the two lines correctly show the same %. Called from the primary daemon's
+  // ready poll (which runs during the catch-up while RPC is down).
   let lastIndexLine = ''
-  // Cache the last known chain tip (syncheight) so the sync check can still show
-  // a % even on polls where getblockchaininfo stalls and we fall back to getinfo.
-  let lastSyncHeight = 0
   async function emitIndexRebuildProgress() {
     try {
       const s = await storeJson.read().once()
@@ -372,63 +342,29 @@ export const main = sdk.setupMain(async ({ effects }) => {
           // (Per-index rebuild progress is emitted from the primary daemon's
           // ready poll, which runs during the catch-up while RPC is down.)
 
-          // getinfo is cheap and stays responsive (~ms) even during heavy-block
-          // IBD, so it is the reliable liveness/height source. getblockchaininfo
-          // is richer (%, tip, IBD flag) but can stall under the chain lock —
-          // give it a SHORT timeout and treat a stall as "data unavailable this
-          // poll" rather than failing the whole check.
-          const gi = await rpcJson(10_000, 'getinfo')
-          const bci = await rpcJson(10_000, 'getblockchaininfo')
-
-          if (bci && typeof bci.syncheight === 'number' && bci.syncheight > lastSyncHeight) {
-            lastSyncHeight = bci.syncheight
-          }
-
-          const blocks: number | undefined =
-            (typeof bci?.blocks === 'number' ? bci.blocks : undefined) ??
-            (typeof gi?.blocks === 'number' ? gi.blocks : undefined)
-
-          // Only show "Waiting" if BOTH calls failed — i.e. the node is genuinely
-          // not answering RPC (not merely a lock stall on the heavy call).
-          if (blocks === undefined) {
-            return { message: 'Waiting for sync info', result: 'loading' }
-          }
-
-          // Rich determination when getblockchaininfo answered. BCHD omits
-          // verificationprogress/syncheight/initialblockdownload when fully synced.
-          const vp: number | undefined = bci?.verificationprogress
-          const syncHeight = (bci?.syncheight as number) ?? 0
-          const now = Math.floor(Date.now() / 1000)
-          const medianAge = bci?.mediantime != null ? now - bci.mediantime : 0
-          const isStale = medianAge > 7200
-          const target = syncHeight > 0 ? syncHeight : lastSyncHeight
-
-          // Without getblockchaininfo we cannot confirm the tip, so never claim
-          // "Synced" off getinfo alone — show progress conservatively instead.
-          const isSyncing = !bci
-            ? true
-            : (bci.initialblockdownload === true ||
-               (vp !== undefined && vp < 0.999) ||
-               (target > 0 && blocks < target - 10) ||
-               isStale)
-
-          if (isSyncing) {
-            const pct =
-              vp !== undefined
-                ? (vp * 100).toFixed(2)
-                : target > 0
-                  ? ((blocks / target) * 100).toFixed(2)
-                  : null
-            const tgtStr = target > 0 ? target.toLocaleString() : '?'
-            const pctStr = pct ? `${pct}% ` : ''
-            return {
-              message: `Syncing blocks... ${pctStr}(${blocks.toLocaleString()}/${tgtStr}) [${netLabel}]`,
-              result: 'loading',
+          // Mirrors the BCHN reference: read getblockchaininfo and use the node's
+          // own initialblockdownload flag as the source of truth. BCHD omits
+          // initialblockdownload (omitempty) when synced, so absent = synced.
+          try {
+            const res = await rpcWithRetry('getblockchaininfo')
+            if (res.exitCode !== 0)
+              return { message: 'Waiting for sync info', result: 'loading' }
+            const info = JSON.parse(res.stdout.toString()) as {
+              blocks: number
+              initialblockdownload?: boolean
+              verificationprogress?: number
+              pruned?: boolean
             }
-          }
-          return {
-            message: `Synced — block ${blocks.toLocaleString()} (${netLabel})`,
-            result: 'success',
+            if (info.initialblockdownload) {
+              const pct = ((info.verificationprogress ?? 0) * 100).toFixed(2)
+              return { message: `Syncing blocks... ${pct}% (${netLabel})`, result: 'loading' }
+            }
+            return {
+              message: `Synced — block ${info.blocks}${info.pruned ? ' (pruned)' : ''} (${netLabel})`,
+              result: 'success',
+            }
+          } catch {
+            return { message: 'Waiting for sync info', result: 'loading' }
           }
         },
       },
@@ -461,32 +397,25 @@ export const main = sdk.setupMain(async ({ effects }) => {
       ready: {
         display: 'Peer Connections',
         fn: async () => {
-          // getpeerinfo can stall for many seconds under the chain lock during
-          // IBD, so don't gate the check on it. Use the cheap getinfo.connections
-          // count as the reliable signal; enrich with the inbound/outbound split
-          // from a short-timeout getpeerinfo only when it answers in time.
-          const peers = await rpcJson(10_000, 'getpeerinfo') as Array<{ inbound: boolean }> | null
-          const gi = peers ? null : await rpcJson(10_000, 'getinfo')
-          const count =
-            Array.isArray(peers) ? peers.length
-            : typeof gi?.connections === 'number' ? gi.connections
-            : undefined
-
-          if (count === undefined)
-            return { message: 'Unable to query peers', result: 'loading' }
-          if (count === 0)
-            return { message: 'No peers connected — node may be starting up', result: 'loading' }
-          if (count < 3)
-            return { message: `Only ${count} peer(s) connected`, result: 'loading' }
-
-          if (Array.isArray(peers)) {
+          // Mirrors the BCHN reference.
+          try {
+            const res = await rpcWithRetry('getpeerinfo')
+            if (res.exitCode !== 0)
+              return { message: 'Unable to query peers', result: 'loading' }
+            const peers = JSON.parse(res.stdout.toString()) as Array<{ inbound: boolean }>
+            const count = peers.length
+            if (count === 0)
+              return { message: 'No peers connected — node may be starting up', result: 'loading' }
+            if (count < 3)
+              return { message: `Only ${count} peer(s) connected`, result: 'loading' }
             const inbound = peers.filter((p) => p.inbound).length
             return {
               message: `${count} peers (${count - inbound} outbound, ${inbound} inbound)`,
               result: 'success',
             }
+          } catch {
+            return { message: 'Unable to query peers', result: 'loading' }
           }
-          return { message: `${count} peers connected`, result: 'success' }
         },
       },
       requires: ['primary'],
