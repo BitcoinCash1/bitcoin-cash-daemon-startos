@@ -326,6 +326,13 @@ export const main = sdk.setupMain(async ({ effects }) => {
       ready: {
         display: 'RPC',
         fn: async () => {
+          // Emit per-index rebuild progress here: this ready poll runs repeatedly
+          // during startup WHILE RPC is still down, which is exactly when an index
+          // catch-up runs (bchd rebuilds indexes during chain init, before the RPC
+          // server starts). The sync-progress health check can't see it because it
+          // needs RPC. emitIndexRebuildProgress reads the log file (not RPC), so it
+          // works here. No-op unless an index was just toggled on.
+          await emitIndexRebuildProgress()
           try {
             const res = await rpc('getinfo')
             return res.exitCode === 0
@@ -362,9 +369,8 @@ export const main = sdk.setupMain(async ({ effects }) => {
       ready: {
         display: 'Blockchain Sync',
         fn: async () => {
-          // Emit labeled per-index rebuild progress to the logs (no-op unless an
-          // index was just toggled on).
-          await emitIndexRebuildProgress()
+          // (Per-index rebuild progress is emitted from the primary daemon's
+          // ready poll, which runs during the catch-up while RPC is down.)
 
           // getinfo is cheap and stays responsive (~ms) even during heavy-block
           // IBD, so it is the reliable liveness/height source. getblockchaininfo
