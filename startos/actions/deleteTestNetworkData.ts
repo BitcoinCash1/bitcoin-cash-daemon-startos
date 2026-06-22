@@ -13,6 +13,7 @@ const deleteSpec = InputSpec.of({
     default: [],
     values: {
       testnet3: 'Testnet3',
+      testnet4: 'Testnet4',
       chipnet: 'Chipnet',
       regtest: 'Regtest',
     },
@@ -21,7 +22,7 @@ const deleteSpec = InputSpec.of({
   }),
 })
 
-function pathsFor(network: 'testnet3' | 'chipnet' | 'regtest') {
+function pathsFor(network: 'testnet3' | 'testnet4' | 'chipnet' | 'regtest') {
   return [
     `${rootDir}/${network}`,
     `${rootDir}/logs/${network}`,
@@ -45,12 +46,13 @@ export const deleteTestNetworkData = sdk.Action.withInput(
   deleteSpec,
 
   async () => ({
-    networks: [] as Array<'testnet3' | 'chipnet' | 'regtest'>,
+    networks: [] as Array<'testnet3' | 'testnet4' | 'chipnet' | 'regtest'>,
   }),
 
   async ({ effects, input }) => {
     const selected = ((input.networks as string[] | undefined) ?? []).filter(
-      (n): n is 'testnet3' | 'chipnet' | 'regtest' => n === 'testnet3' || n === 'chipnet' || n === 'regtest',
+      (n): n is 'testnet3' | 'testnet4' | 'chipnet' | 'regtest' =>
+        n === 'testnet3' || n === 'testnet4' || n === 'chipnet' || n === 'regtest',
     )
 
     if (selected.length === 0) {
@@ -64,7 +66,7 @@ export const deleteTestNetworkData = sdk.Action.withInput(
 
     const store = await storeJson.read().once()
     const active = store?.network ?? 'mainnet'
-    if (selected.includes(active as 'testnet3' | 'chipnet' | 'regtest')) {
+    if (selected.includes(active as 'testnet3' | 'testnet4' | 'chipnet' | 'regtest')) {
       return {
         version: '1' as const,
         title: 'Active Network Protected',

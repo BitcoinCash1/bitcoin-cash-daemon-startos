@@ -9,7 +9,7 @@ export const manifest = setupManifest({
   marketingUrl: 'https://bchd.cash',
   donationUrl: null,
   docsUrls: [
-    'https://github.com/BitcoinCash1/bitcoin-cash-daemon-startos/blob/master/README.md',
+    'https://github.com/BitcoinCash1/bitcoin-cash-daemon-startos/blob/master/instructions.md',
     'https://github.com/gcash/bchd',
   ],
   description: {
