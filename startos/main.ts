@@ -73,6 +73,11 @@ export const main = sdk.setupMain(async ({ effects }) => {
     `--rpcpass=${rpcPassword}`,
     `--rpclisten=0.0.0.0:${rpcPort}`,
     `--listen=0.0.0.0:${peerPort}`,
+    // Mining/template policy: fill the block by fee from the very first byte
+    // (skip the priority phase) so low-fee and deep unconfirmed-chain txs are
+    // not dropped from getblocktemplate. Without this bchd's default priority
+    // phase + 0-byte blockminsize can yield near-empty templates on a backlog.
+    `--blockprioritysize=0`,
   ]
 
   if (netFlag) {
