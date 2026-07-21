@@ -1,5 +1,14 @@
 import { sdk } from './sdk'
-import { Network, NETWORKS, networkFlag, networkPorts, rootDir, rpcPlaintextPort } from './utils'
+import { socksHostId, socksPort } from 'tor-startos/startos/utils'
+import {
+  bridgeAddress,
+  Network,
+  NETWORKS,
+  networkFlag,
+  networkPorts,
+  rootDir,
+  rpcPlaintextPort,
+} from './utils'
 import { bchdConf } from './fileModels/bchd.conf'
 import { storeJson } from './fileModels/store.json'
 import { mainMounts } from './mounts'
@@ -11,8 +20,9 @@ export const main = sdk.setupMain(async ({ effects }) => {
 
   const conf = await bchdConf.read().const(effects)
   const store = await storeJson.read().once()
-  const network: Network =
-    NETWORKS.includes(store?.network as Network) ? (store!.network as Network) : 'mainnet'
+  const network: Network = NETWORKS.includes(store?.network as Network)
+    ? (store!.network as Network)
+    : 'mainnet'
   const { rpc: rpcPort, peer: peerPort, grpc: grpcPort } = networkPorts[network]
   const netFlag = networkFlag[network]
   const netLabel = network.charAt(0).toUpperCase() + network.slice(1)
@@ -22,7 +32,9 @@ export const main = sdk.setupMain(async ({ effects }) => {
   const torEnabled = store?.torEnabled ?? true
 
   const grpcEnabled = (conf?.grpclisten ?? '') !== ''
-  const onlynetList = ((conf?.onlynet as string[] | undefined) ?? []).filter(Boolean)
+  const onlynetList = ((conf?.onlynet as string[] | undefined) ?? []).filter(
+    Boolean,
+  )
   const onlynetActive = onlynetList.length > 0
   const onionOnly = onlynetActive && onlynetList.every((n) => n === 'onion')
   const externalip = (store?.externalip ?? []).filter(Boolean)
@@ -41,30 +53,39 @@ export const main = sdk.setupMain(async ({ effects }) => {
   if (store?.txindexCatchupPending) {
     console.log(
       '[Index Rebuild] Transaction Index is (re)building from genesis on this start. ' +
-      'Live progress follows as "INDX: Indexed N blocks ... height H/Y (PP%)" log lines.',
+        'Live progress follows as "INDX: Indexed N blocks ... height H/Y (PP%)" log lines.',
     )
   }
   if (store?.addrindexCatchupPending) {
     console.log(
       '[Index Rebuild] Address Index is (re)building from genesis on this start ' +
-      '(the slow index — upstream bchd issue #219). ' +
-      'Live progress follows as "INDX: Indexed N blocks ... height H/Y (PP%)" log lines.',
+        '(the slow index — upstream bchd issue #219). ' +
+        'Live progress follows as "INDX: Indexed N blocks ... height H/Y (PP%)" log lines.',
     )
   }
 
-  // Tor — get container IP (restarts BCHD if it changes)
-  const torIp = torEnabled
-    ? await sdk.getContainerIp(effects, { packageId: 'tor' }).const()
-    : null
+  // Tor SOCKS over the bridge. The mapped value only changes when the address
+  // itself does — with the 9050 fallback it stays constant across tor
+  // install/update/uninstall, so this .const() never restarts BCHD unless tor
+  // lands on a different port (then one healing restart). A dead bridge address
+  // is just connection-refused, so the Tor flags are safe to pass whenever the
+  // user has Tor routing enabled, even before Tor is installed.
+  const torSocks = await bridgeAddress(effects, {
+    packageId: 'tor',
+    hostId: socksHostId,
+    internalPort: socksPort,
+    fallbackPort: socksPort,
+  }).const()
 
-  // Track Tor running status dynamically
+  // Track Tor install/run state dynamically for the health check (no restart).
+  // Registered unconditionally so it arms and heals regardless of start order.
+  let torInstalled = false
   let torRunning = false
-  if (torIp) {
-    sdk.getStatus(effects, { packageId: 'tor' }).onChange((status) => {
-      torRunning = status?.desired.main === 'running'
-      return { cancel: false }
-    })
-  }
+  sdk.getStatus(effects, { packageId: 'tor' }).onChange((status) => {
+    torInstalled = status !== null
+    torRunning = status?.desired.main === 'running'
+    return { cancel: false }
+  })
 
   const bchdArgs: string[] = [
     `--configfile=${rootDir}/bchd.conf`,
@@ -105,10 +126,10 @@ export const main = sdk.setupMain(async ({ effects }) => {
     bchdArgs.push('--fastsync')
   }
 
-  if (torIp) {
-    bchdArgs.push(`--onion=${torIp}:9050`)
+  if (torEnabled) {
+    bchdArgs.push(`--onion=${torSocks}`)
     if (onionOnly) {
-      bchdArgs.push(`--proxy=${torIp}:9050`)
+      bchdArgs.push(`--proxy=${torSocks}`)
     }
     if (store?.torIsolation) {
       bchdArgs.push('--torisolation')
@@ -161,7 +182,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
   bchdArgs.push(`--rpccert=${rootDir}/rpc.cert`)
   bchdArgs.push(`--rpckey=${rootDir}/rpc.key`)
 
-  const bchdSub = await sdk.SubContainer.of(
+  const bchdSub = sdk.SubContainer.of(
     effects,
     { imageId: 'bchd' },
     mainMounts,
@@ -171,7 +192,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
   // stunnel SubContainer: accepts plaintext HTTP on 8334, forwards to
   // BCHD's native TLS RPC on 127.0.0.1:8332. Required for ckpool-lineage
   // miners (asicseer-pool, ckpool) which have no TLS/SSL library at all.
-  const stunnelSub = await sdk.SubContainer.of(
+  const stunnelSub = sdk.SubContainer.of(
     effects,
     { imageId: 'bchd' },
     mainMounts,
@@ -195,7 +216,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
     for (let attempt = 0; attempt < 3; attempt++) {
       const res = await rpc(...args)
       if (res.exitCode === 0) return res
-      if (attempt < 2) await new Promise<void>(r => setTimeout(r, 2000))
+      if (attempt < 2) await new Promise<void>((r) => setTimeout(r, 2000))
     }
     return rpc(...args)
   }
@@ -230,7 +251,8 @@ export const main = sdk.setupMain(async ({ effects }) => {
       const adPending = s?.addrindexCatchupPending === true
       if (!txPending && !adPending) return // nothing rebuilding → silent
       const res = await bchdSub.exec([
-        'sh', '-c',
+        'sh',
+        '-c',
         `f=$(ls -t /root/.bchd/logs/*/bchd.log "$HOME"/.bchd/logs/*/bchd.log 2>/dev/null | head -1); [ -n "$f" ] && grep -a Indexed "$f" | tail -1 || true`,
       ])
       if (res.exitCode !== 0) return
@@ -239,8 +261,10 @@ export const main = sdk.setupMain(async ({ effects }) => {
       const hy = m[0].replace(/^height /, '')
       if (hy === lastIndexLine) return // unchanged → don't repeat
       lastIndexLine = hy
-      if (txPending) console.log(`[Index Rebuild] Transaction Index catch-up: ${hy}`)
-      if (adPending) console.log(`[Index Rebuild] Address Index catch-up: ${hy}`)
+      if (txPending)
+        console.log(`[Index Rebuild] Transaction Index catch-up: ${hy}`)
+      if (adPending)
+        console.log(`[Index Rebuild] Address Index catch-up: ${hy}`)
     } catch {
       // never let log-emission break the health check
     }
@@ -259,28 +283,42 @@ export const main = sdk.setupMain(async ({ effects }) => {
           try {
             const mkdirRes = await bchdSub.exec(['mkdir', '-p', rootDir])
             if (mkdirRes.exitCode !== 0) {
-              console.warn(`nocow: mkdir failed for ${rootDir}; continuing without chattr`)
+              console.warn(
+                `nocow: mkdir failed for ${rootDir}; continuing without chattr`,
+              )
               return null
             }
-            const chattrRes = await bchdSub.exec(['chattr', '-R', '+C', rootDir])
+            const chattrRes = await bchdSub.exec([
+              'chattr',
+              '-R',
+              '+C',
+              rootDir,
+            ])
             if (chattrRes.exitCode !== 0) {
-              console.warn(`nocow: chattr not applied for ${rootDir}; continuing startup`)
+              console.warn(
+                `nocow: chattr not applied for ${rootDir}; continuing startup`,
+              )
             }
             // Generate TLS certs if missing (BCHD requires them for the P2P
             // listener even when --notls is set for RPC).
             await bchdSub.exec([
-              'sh', '-c',
+              'sh',
+              '-c',
               `test -f ${rootDir}/rpc.cert || gencerts --directory=${rootDir} --force`,
             ])
             // Strip any legacy `externalip[]=` lines from bchd.conf. BCHD
             // rejects these at config parse; we now pass --externalip via CLI
             // from the list maintained in store.json by watchHosts.
             await bchdSub.exec([
-              'sh', '-c',
+              'sh',
+              '-c',
               `test -f ${rootDir}/bchd.conf && sed -i '/^externalip\\[\\]=/d' ${rootDir}/bchd.conf || true`,
             ])
           } catch (err) {
-            console.warn('nocow: unable to set NoCOW attributes; continuing startup', err)
+            console.warn(
+              'nocow: unable to set NoCOW attributes; continuing startup',
+              err,
+            )
           }
           return null
         },
@@ -324,7 +362,10 @@ export const main = sdk.setupMain(async ({ effects }) => {
         // the flags so restarts don't re-announce a rebuild that already ran.
         fn: async () => {
           const currentStore = await storeJson.read().once()
-          if (currentStore?.txindexCatchupPending || currentStore?.addrindexCatchupPending) {
+          if (
+            currentStore?.txindexCatchupPending ||
+            currentStore?.addrindexCatchupPending
+          ) {
             await storeJson.merge(effects, {
               txindexCatchupPending: false,
               addrindexCatchupPending: false,
@@ -357,7 +398,10 @@ export const main = sdk.setupMain(async ({ effects }) => {
             }
             if (info.initialblockdownload) {
               const pct = ((info.verificationprogress ?? 0) * 100).toFixed(2)
-              return { message: `Syncing blocks... ${pct}% (${netLabel})`, result: 'loading' }
+              return {
+                message: `Syncing blocks... ${pct}% (${netLabel})`,
+                result: 'loading',
+              }
             }
             return {
               message: `Synced — block ${info.blocks}${info.pruned ? ' (pruned)' : ''} (${netLabel})`,
@@ -402,12 +446,20 @@ export const main = sdk.setupMain(async ({ effects }) => {
             const res = await rpcWithRetry('getpeerinfo')
             if (res.exitCode !== 0)
               return { message: 'Unable to query peers', result: 'loading' }
-            const peers = JSON.parse(res.stdout.toString()) as Array<{ inbound: boolean }>
+            const peers = JSON.parse(res.stdout.toString()) as Array<{
+              inbound: boolean
+            }>
             const count = peers.length
             if (count === 0)
-              return { message: 'No peers connected — node may be starting up', result: 'loading' }
+              return {
+                message: 'No peers connected — node may be starting up',
+                result: 'loading',
+              }
             if (count < 3)
-              return { message: `Only ${count} peer(s) connected`, result: 'loading' }
+              return {
+                message: `Only ${count} peer(s) connected`,
+                result: 'loading',
+              }
             const inbound = peers.filter((p) => p.inbound).length
             return {
               message: `${count} peers (${count - inbound} outbound, ${inbound} inbound)`,
@@ -427,15 +479,25 @@ export const main = sdk.setupMain(async ({ effects }) => {
           if (!grpcEnabled) {
             return {
               result: 'disabled' as const,
-              message: 'gRPC API is disabled — enable grpclisten in Node Settings to use it',
+              message:
+                'gRPC API is disabled — enable grpclisten in Node Settings to use it',
             }
           }
           try {
-            return await grpcReady()
-              ? { result: 'success' as const, message: `gRPC API is listening on port ${grpcPort}` }
-              : { result: 'loading' as const, message: 'gRPC API is starting up...' }
+            return (await grpcReady())
+              ? {
+                  result: 'success' as const,
+                  message: `gRPC API is listening on port ${grpcPort}`,
+                }
+              : {
+                  result: 'loading' as const,
+                  message: 'gRPC API is starting up...',
+                }
           } catch {
-            return { result: 'loading' as const, message: 'gRPC API is starting up...' }
+            return {
+              result: 'loading' as const,
+              message: 'gRPC API is starting up...',
+            }
           }
         },
       },
@@ -446,13 +508,26 @@ export const main = sdk.setupMain(async ({ effects }) => {
         display: 'Tor',
         fn: () => {
           if (onionOnly && !torEnabled)
-            return { result: 'failure' as const, message: 'Invalid config: onlynet=onion requires Tor routing enabled' }
+            return {
+              result: 'failure' as const,
+              message:
+                'Invalid config: onlynet=onion requires Tor routing enabled',
+            }
           if (!torEnabled)
-            return { result: 'disabled' as const, message: 'Tor proxy is disabled in config' }
-          if (!torIp)
-            return { result: 'disabled' as const, message: 'Tor is not installed' }
+            return {
+              result: 'disabled' as const,
+              message: 'Tor proxy is disabled in config',
+            }
+          if (!torInstalled)
+            return {
+              result: 'disabled' as const,
+              message: 'Tor is not installed',
+            }
           if (!torRunning)
-            return { result: 'disabled' as const, message: 'Tor is not running' }
+            return {
+              result: 'disabled' as const,
+              message: 'Tor is not running',
+            }
           if (onlynetActive && !onlynetList.includes('onion'))
             return excludedByOnlynet()
           return {
@@ -483,7 +558,11 @@ export const main = sdk.setupMain(async ({ effects }) => {
       ready: {
         display: 'Clearnet',
         fn: () => {
-          if (onlynetActive && !onlynetList.includes('ipv4') && !onlynetList.includes('ipv6'))
+          if (
+            onlynetActive &&
+            !onlynetList.includes('ipv4') &&
+            !onlynetList.includes('ipv6')
+          )
             return excludedByOnlynet()
           return {
             result: 'success' as const,
@@ -499,7 +578,8 @@ export const main = sdk.setupMain(async ({ effects }) => {
       subcontainer: stunnelSub,
       exec: {
         command: [
-          'sh', '-c',
+          'sh',
+          '-c',
           `{ echo 'foreground = yes'; echo 'pid ='; echo 'debug = 0'; echo 'output = /dev/null'; echo 'syslog = no'; echo ''; echo '[rpc-plaintext]'; echo 'client = yes'; echo 'accept = 0.0.0.0:${rpcPlaintextPort}'; echo 'connect = 127.0.0.1:${rpcPort}'; echo 'verify = 0'; } > /tmp/stunnel-rpc.conf && exec stunnel4 /tmp/stunnel-rpc.conf >/dev/null 2>&1`,
         ],
         sigtermTimeout: 5_000,
@@ -510,17 +590,30 @@ export const main = sdk.setupMain(async ({ effects }) => {
           // Use /proc/net/tcp to check if stunnel is listening — avoids
           // opening a TCP connection to the TLS-terminating proxy which causes
           // Node.js to buffer the raw TLS handshake and exceed maxBuffer.
-          const hexPort = rpcPlaintextPort.toString(16).toUpperCase().padStart(4, '0')
+          const hexPort = rpcPlaintextPort
+            .toString(16)
+            .toUpperCase()
+            .padStart(4, '0')
           try {
             const probe = await stunnelSub.exec([
-              'sh', '-c',
+              'sh',
+              '-c',
               `awk -v p=":${hexPort}" '$4=="0A" && $2 ~ p"$" {found=1} END{exit !found}' /proc/1/net/tcp /proc/1/net/tcp6 2>/dev/null`,
             ])
             return probe.exitCode === 0
-              ? { result: 'success' as const, message: `Plaintext RPC proxy ready on port ${rpcPlaintextPort} (stunnel → BCHD TLS)` }
-              : { result: 'starting' as const, message: 'Plaintext RPC proxy starting...' }
+              ? {
+                  result: 'success' as const,
+                  message: `Plaintext RPC proxy ready on port ${rpcPlaintextPort} (stunnel → BCHD TLS)`,
+                }
+              : {
+                  result: 'starting' as const,
+                  message: 'Plaintext RPC proxy starting...',
+                }
           } catch {
-            return { result: 'starting' as const, message: 'Plaintext RPC proxy starting...' }
+            return {
+              result: 'starting' as const,
+              message: 'Plaintext RPC proxy starting...',
+            }
           }
         },
       },
