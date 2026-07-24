@@ -1,7 +1,7 @@
 import { VersionInfo } from '@start9labs/start-sdk'
 
 export const current = VersionInfo.of({
-  version: '0.22.1:0',
+  version: '0.22.1:1',
   releaseNotes: {
     en_US:
       'Updated BCHD to 0.22.1. Mining fix: block templates now include the Upgrade9 (CashTokens) script flags, so valid CashToken transactions are no longer dropped from templates — which had produced empty or near-empty blocks on token-active networks. Also removes the defunct dnsseed.electroncash.de DNS seed and modernizes internal sync/atomic usage. Release notes: https://github.com/gcash/bchd/releases/tag/v0.22.1. Also includes internal updates for start-sdk 2.0. Tor integration is now more robust: BCHD reaches Tor’s SOCKS proxy over the internal service bridge and tracks Tor’s status reactively, so installing or updating Tor after BCHD no longer restarts BCHD and the Tor health check updates on its own.',
