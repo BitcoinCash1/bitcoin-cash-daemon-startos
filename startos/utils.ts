@@ -1,5 +1,3 @@
-import { sdk } from './sdk'
-
 export const NETWORKS = [
   'mainnet',
   'testnet3',

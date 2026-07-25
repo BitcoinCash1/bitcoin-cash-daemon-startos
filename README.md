@@ -242,7 +242,7 @@ Restoring overwrites current configuration. Blockchain data is not included and 
 
 ## 14. Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md)
+Build and development workflow follow the StartOS packaging guide: <https://docs.start9.com/packaging>. Keep `README.md`, `instructions.md`, and `AGENTS.md` in sync with any change to user-visible behavior or package structure.
 
 ---
 

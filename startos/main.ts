@@ -63,8 +63,8 @@ export const main = sdk.setupMain(async ({ effects }) => {
     )
   }
 
-  // Tor SOCKS over the bridge. The mapped value only changes when the address
-  // itself does — with the 9050 fallback it stays constant across tor
+  // Tor SOCKS over the bridge. The bridge address only changes when tor's
+  // binding does — with the 9050 fallback it stays constant across tor
   // install/update/uninstall, so this .const() never restarts BCHD unless tor
   // lands on a different port (then one healing restart). A dead bridge address
   // is just connection-refused, so the Tor flags are safe to pass whenever the
