@@ -9,7 +9,7 @@ RUN apt-get update && \
         stunnel4 && \
     rm -rf /var/lib/apt/lists/*
 
-# bchd binaries (pre-built, BFUpgrade9-patched — see Dockerfile.binary)
+# bchd binaries (built from unmodified upstream source — see Dockerfile.binary)
 COPY --from=ghcr.io/bitcoincash1/bchd-binary:latest /usr/local/bin/bchd /usr/local/bin/
 COPY --from=ghcr.io/bitcoincash1/bchd-binary:latest /usr/local/bin/bchctl /usr/local/bin/
 COPY --from=ghcr.io/bitcoincash1/bchd-binary:latest /usr/local/bin/gencerts /usr/local/bin/
