@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   check:
@@ -32,6 +33,7 @@ jobs:
           sed -i "s|^ARG BCHD_VERSION=.*|ARG BCHD_VERSION=${LATEST}|" Dockerfile.binary
           git add Dockerfile.binary
           bash scripts/auto-bump.sh "$LATEST"
+          gh workflow run tagAndRelease.yml
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
