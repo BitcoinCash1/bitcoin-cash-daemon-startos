@@ -176,7 +176,7 @@ Restoring overwrites current configuration. Blockchain data is not included and 
 | Check | Method | Key Messages |
 |---|---|---|
 | **RPC** (daemon ready) | `bchctl getinfo` | `BCHD RPC is ready` / `BCHD RPC is starting...` |
-| **Blockchain Sync** | `bchctl getblockchaininfo` — reads `verificationprogress`, `initialblockdownload`, `mediantime` (stale > 2 h means syncing) | `Synced — block N` / `Syncing blocks... X.XX% (N/M)` |
+| **Blockchain Sync** | `bchctl getblockchaininfo` — `syncheight` vs `blocks` (BCHD does not publish `initialblockdownload`) | `Synced — block N` / `Syncing blocks... X.XX%` |
 | **Peer Connections** | `bchctl getpeerinfo` — counts total and inbound peers | `N peers (X outbound, Y inbound)` / `No peers connected` / `Only N peer(s) connected` |
 | **gRPC** | `/proc/net/tcp` port-listen probe (avoids TLS handshake noise) | `gRPC API is listening on port 8335` / `gRPC API is disabled` / `gRPC API is starting up...` |
 | **RPC Plaintext Proxy** | `/proc/net/tcp` port-listen probe | `Plaintext RPC proxy ready on port 8334 (stunnel → BCHD TLS)` / `Plaintext RPC proxy starting...` |
