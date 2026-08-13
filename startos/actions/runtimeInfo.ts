@@ -18,8 +18,8 @@ type BchdInfo = {
 type BchdBlockchainInfo = {
   blocks?: number
   headers?: number
+  syncheight?: number
   verificationprogress?: number
-  initialblockdownload?: boolean
   pruned?: boolean
 }
 
@@ -60,7 +60,7 @@ export const runtimeInfo = sdk.Action.withoutInput(
           `--rpcserver=127.0.0.1:${rpcPort}`,
           `--rpcuser=${rpcUser}`,
           `--rpcpass=${rpcPassword}`,
-          '--notls',
+          `--rpccert=${rootDir}/rpc.cert`,
         ]
 
         const [infoRes, chainRes, peersRes] = await Promise.all([
@@ -93,9 +93,16 @@ export const runtimeInfo = sdk.Action.withoutInput(
         }
         if (chain) {
           lines.push(`Chain: ${chain.pruned ? 'pruned' : 'archival'} ${network}`)
-          lines.push(`Blocks: ${chain.blocks ?? '?'} / ${chain.headers ?? '?'}`)
+          // `syncheight` is the best height BCHD's peers have offered. Not
+          // `headers` (advances with `blocks`) and not `initialblockdownload`
+          // (BCHD does not publish it). Start9-Community #9.
+          const blocks = chain.blocks ?? 0
+          const target = chain.syncheight ?? 0
           const vp = chain.verificationprogress ?? 0
-          lines.push(`Sync: ${chain.initialblockdownload ? `${(vp * 100).toFixed(2)}%` : 'Complete'}`)
+          lines.push(`Blocks: ${blocks} / ${target || (chain.headers ?? '?')}`)
+          lines.push(
+            `Sync: ${target > blocks ? `${(vp * 100).toFixed(2)}%` : 'Complete'}`,
+          )
         }
 
         return {
