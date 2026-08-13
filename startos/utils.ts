@@ -23,6 +23,7 @@ export const grpcPort = networkPorts.mainnet.grpc
 export const rpcPlaintextPort = 8334
 export const rpcInterfaceId = 'rpc'
 export const peerInterfaceId = 'peer'
+export const peerHostId = 'peer'
 export const grpcInterfaceId = 'grpc'
 export const rpcPlaintextInterfaceId = 'rpc-plaintext'
 export const rootDir = '/data'
