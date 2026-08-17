@@ -40,9 +40,27 @@ export const ${TAG_VAR} = VersionInfo.of({
 })
 EOF
 
-sed -i "1a import { ${TAG_VAR} } from './v${CLEAN_TAG}.0'" startos/versions/index.ts
+# Both edits must be idempotent. Upstream tags do not always arrive in order,
+# and a re-dispatch of the same tag re-runs this script — inserting the import
+# or the `other` entry twice yields "TS2300: Duplicate identifier" and fails the
+# package build. This is what broke bch-explorer-startos on 3.12.2/3.12.3.
+if ! grep -q "import { ${TAG_VAR} } from" startos/versions/index.ts; then
+  sed -i "1a import { ${TAG_VAR} } from './v${CLEAN_TAG}.0'" startos/versions/index.ts
+fi
+
 sed -i "s/current: ${CURRENT_VAR}/current: ${TAG_VAR}/" startos/versions/index.ts
-sed -i "s/other: \[/other: [${CURRENT_VAR}, /" startos/versions/index.ts
+
+# Demote the previous current into `other`, unless already listed there.
+if ! grep -qE "(\[|[[:space:]])${CURRENT_VAR}," startos/versions/index.ts; then
+  sed -i "s/other: \[/other: [${CURRENT_VAR}, /" startos/versions/index.ts
+fi
+
+# Fail here with a readable error rather than 30 minutes later in the package build.
+if ! npx tsc --noEmit -p . >/dev/null 2>&1; then
+  echo "auto-bump produced a version graph that does not type-check:" >&2
+  npx tsc --noEmit -p . 2>&1 | head -10 >&2
+  exit 1
+fi
 
 git config user.name "github-actions[bot]"
 git config user.email "github-actions[bot]@users.noreply.github.com"

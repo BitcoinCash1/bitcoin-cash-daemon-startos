@@ -3,7 +3,10 @@ name: Tag and Release
 on:
   push:
     branches: ['master']
-    paths-ignore: ['*.md', 'Dockerfile.binary', 'patches/**']
+    # scripts/** and .github/** are excluded so tooling and workflow edits do not
+    # force a rebuild and republish of an unchanged package. Package changes under
+    # startos/ and Dockerfile still trigger normally.
+    paths-ignore: ['*.md', 'Dockerfile.binary', 'patches/**', 'scripts/**', '.github/**']
   workflow_dispatch:
   repository_dispatch:
     types: [upstream-release]
