@@ -75,6 +75,15 @@ else
   fi
 fi
 
+# Never publish from a developer machine. This script ends in `git push`, so
+# running it locally just to see what it would do pushes a real release commit
+# to master. In CI, GITHUB_ACTIONS is always "true".
+if [ -z "${GITHUB_ACTIONS:-}" ]; then
+  echo "Not running in GitHub Actions — bump left uncommitted." >&2
+  echo "Inspect with 'git diff', then commit manually if that is what you want." >&2
+  exit 0
+fi
+
 git config user.name "github-actions[bot]"
 git config user.email "github-actions[bot]@users.noreply.github.com"
 git add startos/versions/index.ts "$NEW_FILE" Dockerfile.binary
