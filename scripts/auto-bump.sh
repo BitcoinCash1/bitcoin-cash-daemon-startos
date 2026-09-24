@@ -1,96 +1,71 @@
 #!/usr/bin/env bash
+# Bump the package to a new upstream BCHD release and open a pull request.
+#
+#   scripts/auto-bump.sh <upstream-tag>      e.g. scripts/auto-bump.sh v0.22.3
+#
+# Sets startos/versions/current.ts to `<upstream>:0` (a new upstream always
+# starts at package revision 0), resets ALLOW_DOWNGRADE to false, updates
+# `ARG BCHD_VERSION` in the Dockerfile, then commits on `auto-bump/<tag>` and
+# opens a PR against master. Merging the PR is what releases it.
+#
+# DRY_RUN=1 edits and commits locally but skips the push and the PR.
 set -euo pipefail
 
-DISPATCHED_TAG="${1:-}"
-if [ -z "$DISPATCHED_TAG" ]; then
-  echo "Usage: $0 <tag>" >&2
+TAG="${1:-}"
+if [ -z "$TAG" ]; then
+  echo "Usage: $0 <upstream-tag>" >&2
   exit 1
 fi
+TAG="v${TAG#v}"
+UPSTREAM="${TAG#v}"
+CURRENT_FILE=startos/versions/current.ts
 
-# gcash/bchd tags as v0.22.0 — strip leading 'v' for version file names
-CLEAN_TAG="${DISPATCHED_TAG#v}"
-
-CURRENT_VAR=$(grep -E '^[[:space:]]*current:' startos/versions/index.ts | head -1 \
-  | sed -E 's/.*current:[[:space:]]*([A-Za-z0-9_]+).*/\1/')
-VERSION_FILE_BASE=$(echo "$CURRENT_VAR" | sed -E 's/^v_//; s/_/./g')
-CURRENT_VERSION=$(grep -E "version:[[:space:]]*'" "startos/versions/v${VERSION_FILE_BASE}.ts" \
-  | head -1 | sed -E "s/.*version:[[:space:]]*'([^']+)'.*/\1/")
+CURRENT_VERSION=$(sed -nE "s/^[[:space:]]*version:[[:space:]]*'([^']+)'.*/\1/p" "$CURRENT_FILE" | head -1)
 CURRENT_UPSTREAM="${CURRENT_VERSION%%:*}"
-
-if [ "$CURRENT_UPSTREAM" = "$CLEAN_TAG" ]; then
-  echo "Already at $CLEAN_TAG — no bump needed"
+if [ "$CURRENT_UPSTREAM" = "$UPSTREAM" ]; then
+  echo "Already at $UPSTREAM — no bump needed"
   exit 0
 fi
-echo "Bumping $CURRENT_UPSTREAM -> $CLEAN_TAG"
-
-TAG_VAR="v_$(echo "$CLEAN_TAG" | tr '.' '_')_0"
-NEW_VERSION="${CLEAN_TAG}:0"
-NEW_FILE="startos/versions/v${CLEAN_TAG}.0.ts"
-
-cat > "$NEW_FILE" <<EOF
-import { VersionInfo } from '@start9labs/start-sdk'
-
-export const ${TAG_VAR} = VersionInfo.of({
-  version: '${NEW_VERSION}',
-  releaseNotes: 'Upstream ${DISPATCHED_TAG}.',
-  migrations: {
-    up: async ({ effects }) => {},
-    down: async ({ effects }) => {},
-  },
-})
-EOF
-
-# Both edits must be idempotent. Upstream tags do not always arrive in order,
-# and a re-dispatch of the same tag re-runs this script — inserting the import
-# or the `other` entry twice yields "TS2300: Duplicate identifier" and fails the
-# package build. This is what broke bch-explorer-startos on 3.12.2/3.12.3.
-if ! grep -q "import { ${TAG_VAR} } from" startos/versions/index.ts; then
-  sed -i "1a import { ${TAG_VAR} } from './v${CLEAN_TAG}.0'" startos/versions/index.ts
-fi
-
-sed -i "s/current: ${CURRENT_VAR}/current: ${TAG_VAR}/" startos/versions/index.ts
-
-# Demote the previous current into `other`, unless already listed there.
-if ! grep -qE "(\[|[[:space:]])${CURRENT_VAR}," startos/versions/index.ts; then
-  sed -i "s/other: \[/other: [${CURRENT_VAR}, /" startos/versions/index.ts
-fi
-
-# Sanity-check the graph we just edited. auto-bump runs before `npm ci` in the
-# workflow, so tsc usually is not installed yet — do not invoke npx here, it
-# would fetch an arbitrary package or fail. Only type-check when a compiler is
-# already present; otherwise fall back to a cheap textual duplicate check,
-# which is the failure mode this script can actually cause.
-if [ -x node_modules/.bin/tsc ]; then
-  if ! node_modules/.bin/tsc --noEmit -p . >/dev/null 2>&1; then
-    echo "auto-bump produced a version graph that does not type-check:" >&2
-    node_modules/.bin/tsc --noEmit -p . 2>&1 | head -10 >&2
-    exit 1
-  fi
-else
-  dupes=$(grep -oE "^import \{ v_[0-9_]+ \}" startos/versions/index.ts | sort | uniq -d)
-  if [ -n "$dupes" ]; then
-    echo "auto-bump produced duplicate imports in startos/versions/index.ts:" >&2
-    echo "$dupes" >&2
-    exit 1
-  fi
-fi
-
-# Never publish from a developer machine. This script ends in `git push`, so
-# running it locally just to see what it would do pushes a real release commit
-# to master. In CI, GITHUB_ACTIONS is always "true".
-if [ -z "${GITHUB_ACTIONS:-}" ]; then
-  echo "Not running in GitHub Actions — bump left uncommitted." >&2
-  echo "Inspect with 'git diff', then commit manually if that is what you want." >&2
+# Never move the version downwards: StartOS cannot migrate to a lower upstream.
+HIGHEST=$(printf '%s\n%s\n' "$CURRENT_UPSTREAM" "$UPSTREAM" | sort -V | tail -1)
+if [ "$HIGHEST" = "$CURRENT_UPSTREAM" ]; then
+  echo "::warning::Tag $TAG is older than the packaged version $CURRENT_UPSTREAM — refusing to downgrade"
   exit 0
 fi
+NEW_VERSION="${UPSTREAM}:0"
+echo "Bumping $CURRENT_VERSION -> $NEW_VERSION"
 
-# Pass the bot identity per-invocation. `git config user.name ...` without
-# --global writes .git/config, which permanently rewrites the identity of
-# whichever clone it runs in — every later commit in that clone is then
-# misattributed to github-actions[bot].
-git add startos/versions/index.ts "$NEW_FILE" Dockerfile.binary
+python3 - "$CURRENT_FILE" "$NEW_VERSION" "$UPSTREAM" <<'PY'
+import re, sys
+path, new_version, upstream = sys.argv[1:]
+src = open(path).read()
+src, n = re.subn(r"(\n\s*version:\s*)'[^']+'", rf"\g<1>'{new_version}'", src, count=1)
+assert n == 1, 'version line not found'
+# Release notes are rewritten for review in the PR; translations are added there.
+src, n = re.subn(
+    r"releaseNotes:\s*(\{.*?\n  \}|'[^']*'|`[^`]*`),",
+    "releaseNotes: {\n    en_US: 'Updates Bitcoin Cash Daemon to upstream " + upstream + ".',\n  },",
+    src, count=1, flags=re.S)
+assert n == 1, 'releaseNotes not found'
+src = re.sub(r"const ALLOW_DOWNGRADE = (true|false)", "const ALLOW_DOWNGRADE = false", src)
+open(path, 'w').write(src)
+PY
+
+sed -i -E "s|^ARG BCHD_VERSION=.*|ARG BCHD_VERSION=${TAG}|" Dockerfile
+
+BRANCH="auto-bump/${TAG}"
+git checkout -b "$BRANCH"
+git add "$CURRENT_FILE" Dockerfile
 git -c user.name="github-actions[bot]" \
     -c user.email="github-actions[bot]@users.noreply.github.com" \
-    commit -m "feat: auto-bump to upstream ${DISPATCHED_TAG} (v${NEW_VERSION})"
-git push origin master
-echo "Version bump committed — continuing build"
+    commit -m "feat: bump BCHD to upstream ${TAG} (${NEW_VERSION})"
+
+if [ "${DRY_RUN:-0}" = "1" ]; then
+  echo "DRY_RUN: committed on $BRANCH, not pushed"
+  exit 0
+fi
+
+git push origin "$BRANCH"
+gh pr create --base master --head "$BRANCH" \
+  --title "Bump BCHD to upstream ${TAG} (${NEW_VERSION})" \
+  --body "Automated bump to upstream BCHD ${TAG}. Review the release notes (add translations) before merging; merging releases ${NEW_VERSION}."
