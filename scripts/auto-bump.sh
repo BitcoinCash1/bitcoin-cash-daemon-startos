@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
-# Bump the package to a new upstream BCHD release and open a pull request.
+# Bump the package to a new upstream BCHD release, commit it to master and
+# release it.
 #
 #   scripts/auto-bump.sh <upstream-tag>      e.g. scripts/auto-bump.sh v0.22.3
 #
 # Sets startos/versions/current.ts to `<upstream>:0` (a new upstream always
-# starts at package revision 0), resets ALLOW_DOWNGRADE to false, updates
-# `ARG BCHD_VERSION` in the Dockerfile, then commits on `auto-bump/<tag>` and
-# opens a PR against master. Merging the PR is what releases it.
+# starts at package revision 0), resets ALLOW_DOWNGRADE to false, updates `ARG
+# BCHD_VERSION` in the Dockerfile, then commits the bump to master; Check
+# Upstream then dispatches Tag and Release.
 #
-# DRY_RUN=1 edits and commits locally but skips the push and the PR.
+# DRY_RUN=1 edits and commits locally but skips the push.
 set -euo pipefail
 
 TAG="${1:-}"
@@ -41,7 +42,7 @@ path, new_version, upstream = sys.argv[1:]
 src = open(path).read()
 src, n = re.subn(r"(\n\s*version:\s*)'[^']+'", rf"\g<1>'{new_version}'", src, count=1)
 assert n == 1, 'version line not found'
-# Release notes are rewritten for review in the PR; translations are added there.
+# The release notes are a placeholder; translations are added by hand afterwards.
 src, n = re.subn(
     r"releaseNotes:\s*(\{.*?\n  \}|'[^']*'|`[^`]*`),",
     "releaseNotes: {\n    en_US: 'Updates Bitcoin Cash Daemon to upstream " + upstream + ".',\n  },",
@@ -53,19 +54,14 @@ PY
 
 sed -i -E "s|^ARG BCHD_VERSION=.*|ARG BCHD_VERSION=${TAG}|" Dockerfile
 
-BRANCH="auto-bump/${TAG}"
-git checkout -b "$BRANCH"
 git add "$CURRENT_FILE" Dockerfile
 git -c user.name="github-actions[bot]" \
     -c user.email="github-actions[bot]@users.noreply.github.com" \
     commit -m "feat: bump BCHD to upstream ${TAG} (${NEW_VERSION})"
 
 if [ "${DRY_RUN:-0}" = "1" ]; then
-  echo "DRY_RUN: committed on $BRANCH, not pushed"
+  echo "DRY_RUN: committed on master, not pushed"
   exit 0
 fi
 
-git push origin "$BRANCH"
-gh pr create --base master --head "$BRANCH" \
-  --title "Bump BCHD to upstream ${TAG} (${NEW_VERSION})" \
-  --body "Automated bump to upstream BCHD ${TAG}. Review the release notes (add translations) before merging; merging releases ${NEW_VERSION}."
+git push origin master
