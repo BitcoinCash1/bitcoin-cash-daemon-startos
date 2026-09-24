@@ -15,6 +15,7 @@ import {
 } from './utils'
 import { bchdConf } from './fileModels/bchd.conf'
 import { storeJson } from './fileModels/store.json'
+import { i18n } from './i18n'
 
 export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
   const conf = await bchdConf.read().const(effects)
@@ -40,9 +41,9 @@ export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
     secure: { ssl: true },
   })
   const rpc = sdk.createInterface(effects, {
-    name: 'RPC Interface',
+    name: i18n('RPC Interface'),
     id: rpcInterfaceId,
-    description: 'Listens for JSON-RPC commands over TLS',
+    description: i18n('Listens for JSON-RPC commands over TLS'),
     type: 'api',
     masked: false,
     schemeOverride: { ssl: 'https', noSsl: 'https' },
@@ -61,10 +62,11 @@ export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
     secure: { ssl: false },
   })
   const peer = sdk.createInterface(effects, {
-    name: 'Peer Interface',
+    name: i18n('Peer Interface'),
     id: peerInterfaceId,
-    description:
+    description: i18n(
       'Listens for incoming connections from peers on the bitcoin cash network',
+    ),
     type: 'p2p',
     masked: false,
     schemeOverride: { ssl: null, noSsl: null },
@@ -92,10 +94,11 @@ export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
       secure: { ssl: true },
     })
     const grpc = sdk.createInterface(effects, {
-      name: 'gRPC Interface',
+      name: i18n('gRPC Interface'),
       id: grpcInterfaceId,
-      description:
+      description: i18n(
         'BCHD-specific gRPC API over TLS for compact block filters and pub/sub notifications',
+      ),
       type: 'api',
       masked: false,
       schemeOverride: { ssl: 'https', noSsl: 'https' },
@@ -124,10 +127,11 @@ export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
     },
   )
   const rpcPlaintext = sdk.createInterface(effects, {
-    name: 'RPC Plaintext Proxy',
+    name: i18n('RPC Plaintext Proxy'),
     id: rpcPlaintextInterfaceId,
-    description:
+    description: i18n(
       'Plaintext JSON-RPC for miners (asicseer-pool, ckpool) that lack TLS support',
+    ),
     type: 'api',
     masked: false,
     schemeOverride: { ssl: 'http', noSsl: 'http' },

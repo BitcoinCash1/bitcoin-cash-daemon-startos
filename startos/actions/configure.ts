@@ -1,16 +1,17 @@
 import { sdk } from '../sdk'
 import { bchdConf, fullConfigSpec } from '../fileModels/bchd.conf'
 import { storeJson } from '../fileModels/store.json'
+import { i18n } from '../i18n'
 
 export const nodeSettings = sdk.Action.withInput(
   'node-settings',
 
   async ({ effects }) => ({
-    name: 'Node Settings',
-    description: 'Indexes, pruning, gRPC API, and database performance.',
+    name: i18n('Node Settings'),
+    description: i18n('Indexes, pruning, gRPC API, and database performance.'),
     warning: null,
     allowedStatuses: 'any',
-    group: 'Configuration',
+    group: i18n('Configuration'),
     visibility: 'enabled',
   }),
 
@@ -102,11 +103,10 @@ export const nodeSettings = sdk.Action.withInput(
     if (fastSyncUsed && input.txindex) {
       return {
         version: '1' as const,
-        title: 'Transaction Index Unavailable',
-        message:
-          'Transaction Index cannot be enabled because Fast Sync was used during initial sync. ' +
-          'Pre-checkpoint blocks were never downloaded and cannot be indexed. ' +
-          'To use txindex: run Maintenance → Delete Mainnet Data, then re-sync from genesis with Fast Sync disabled.',
+        title: i18n('Transaction Index Unavailable'),
+        message: i18n(
+          'Transaction Index cannot be enabled because Fast Sync was used during initial sync. Pre-checkpoint blocks were never downloaded and cannot be indexed. To use txindex: run Maintenance → Delete Mainnet Data, then re-sync from genesis with Fast Sync disabled.',
+        ),
         result: null,
       }
     }

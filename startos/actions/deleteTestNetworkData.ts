@@ -1,21 +1,23 @@
 import { sdk } from '../sdk'
 import { rootDir } from '../utils'
 import { storeJson } from '../fileModels/store.json'
+import { i18n } from '../i18n'
 
 const { InputSpec, Value } = sdk
 
 const deleteSpec = InputSpec.of({
   networks: Value.multiselect({
-    name: 'Networks To Delete',
-    description:
+    name: i18n('Networks To Delete'),
+    description: i18n(
       'Delete all BCHD data for selected test networks. Mainnet is intentionally excluded and cannot be selected.',
+    ),
     warning: null,
     default: [],
     values: {
-      testnet3: 'Testnet3',
-      testnet4: 'Testnet4',
-      chipnet: 'Chipnet',
-      regtest: 'Regtest',
+      testnet3: i18n('Testnet3'),
+      testnet4: i18n('Testnet4'),
+      chipnet: i18n('Chipnet'),
+      regtest: i18n('Regtest'),
     },
     minLength: 0,
     maxLength: null,
@@ -30,13 +32,15 @@ export const deleteTestNetworkData = sdk.Action.withInput(
   'delete-test-network-data',
 
   async () => ({
-    name: 'Delete Test Network Data',
-    description:
+    name: i18n('Delete Test Network Data'),
+    description: i18n(
       'Delete all BCHD data for testnet3, chipnet and/or regtest. Mainnet data is never deleted by this action.',
-    warning:
+    ),
+    warning: i18n(
       'This permanently deletes selected test-network data, indexes, peers, and logs from disk.',
+    ),
     allowedStatuses: 'any',
-    group: 'Maintenance',
+    group: i18n('Maintenance'),
     visibility: 'enabled',
   }),
 
@@ -58,8 +62,8 @@ export const deleteTestNetworkData = sdk.Action.withInput(
     if (selected.length === 0) {
       return {
         version: '1' as const,
-        title: 'Nothing Selected',
-        message: 'No test networks were selected for deletion.',
+        title: i18n('Nothing Selected'),
+        message: i18n('No test networks were selected for deletion.'),
         result: null,
       }
     }
@@ -73,8 +77,11 @@ export const deleteTestNetworkData = sdk.Action.withInput(
     ) {
       return {
         version: '1' as const,
-        title: 'Active Network Protected',
-        message: `Cannot delete data for the currently active network (${active}). Switch back to mainnet first, then retry.`,
+        title: i18n('Active Network Protected'),
+        message: i18n(
+          'Cannot delete data for the currently active network (${active}). Switch back to mainnet first, then retry.',
+          { active },
+        ),
         result: null,
       }
     }
@@ -104,8 +111,11 @@ export const deleteTestNetworkData = sdk.Action.withInput(
 
     return {
       version: '1' as const,
-      title: 'Test Network Data Deleted',
-      message: `Deleted data for ${selected.join(', ')}. Removed paths: ${deletedPaths.join(', ')}. Mainnet data was not touched.`,
+      title: i18n('Test Network Data Deleted'),
+      message: i18n(
+        'Deleted data for ${selected}. Removed paths: ${paths}. Mainnet data was not touched.',
+        { selected: selected.join(', '), paths: deletedPaths.join(', ') },
+      ),
       result: null,
     }
   },

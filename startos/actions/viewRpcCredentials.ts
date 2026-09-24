@@ -1,6 +1,7 @@
 import { sdk } from '../sdk'
 import { storeJson } from '../fileModels/store.json'
 import { rpcPort } from '../utils'
+import { i18n } from '../i18n'
 
 const { InputSpec, Value } = sdk
 
@@ -8,12 +9,13 @@ export const viewRpcCredentials = sdk.Action.withInput(
   'view-rpc-credentials',
 
   async ({ effects }) => ({
-    name: 'View RPC Credentials',
-    description:
+    name: i18n('View RPC Credentials'),
+    description: i18n(
       'View stored RPC credentials by name. Select a credential to see its username, password, and port.',
+    ),
     warning: null,
     allowedStatuses: 'any',
-    group: 'Credentials',
+    group: i18n('Credentials'),
     visibility: 'enabled',
   }),
 
@@ -24,9 +26,9 @@ export const viewRpcCredentials = sdk.Action.withInput(
     if (creds.length === 0) {
       return InputSpec.of({
         name: Value.select({
-          name: 'Credential',
-          description: 'No credentials found. Generate one first.',
-          values: { '': '(none)' },
+          name: i18n('Credential'),
+          description: i18n('No credentials found. Generate one first.'),
+          values: { '': i18n('(none)') },
           default: '',
         }),
       })
@@ -37,8 +39,8 @@ export const viewRpcCredentials = sdk.Action.withInput(
 
     return InputSpec.of({
       name: Value.select({
-        name: 'Credential',
-        description: 'Select a stored credential to view its details.',
+        name: i18n('Credential'),
+        description: i18n('Select a stored credential to view its details.'),
         values,
         default: creds[0]!.name,
       }),
@@ -59,8 +61,8 @@ export const viewRpcCredentials = sdk.Action.withInput(
     if (!selected) {
       return {
         version: '1' as const,
-        title: 'Credential Not Found',
-        message: 'The selected credential was not found.',
+        title: i18n('Credential Not Found'),
+        message: i18n('The selected credential was not found.'),
         result: null,
       }
     }
@@ -69,12 +71,14 @@ export const viewRpcCredentials = sdk.Action.withInput(
 
     return {
       version: '1' as const,
-      title: `RPC Credential: ${selected.name}`,
+      title: i18n('RPC Credential: ${name}', { name: selected.name }),
       message: [
-        `**Name:** ${selected.name}${isDefault ? ' (active)' : ''}`,
-        `**Username:** ${selected.username}`,
-        `**Password:** ${selected.password}`,
-        `**Port:** ${rpcPort}`,
+        isDefault
+          ? i18n('**Name:** ${name} (active)', { name: selected.name })
+          : i18n('**Name:** ${name}', { name: selected.name }),
+        i18n('**Username:** ${username}', { username: selected.username }),
+        i18n('**Password:** ${password}', { password: selected.password }),
+        i18n('**Port:** ${port}', { port: String(rpcPort) }),
       ].join('\n'),
       result: {
         type: 'single' as const,

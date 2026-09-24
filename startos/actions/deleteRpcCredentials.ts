@@ -1,5 +1,6 @@
 import { sdk } from '../sdk'
 import { storeJson } from '../fileModels/store.json'
+import { i18n } from '../i18n'
 
 const { InputSpec, Value } = sdk
 
@@ -7,11 +8,11 @@ export const deleteRpcCredentials = sdk.Action.withInput(
   'delete-rpc-credentials',
 
   async ({ effects }) => ({
-    name: 'Delete RPC Credentials',
-    description: 'Remove one or more stored RPC credentials by name.',
-    warning: 'Selected credentials will be permanently deleted.',
+    name: i18n('Delete RPC Credentials'),
+    description: i18n('Remove one or more stored RPC credentials by name.'),
+    warning: i18n('Selected credentials will be permanently deleted.'),
     allowedStatuses: 'any',
-    group: 'Credentials',
+    group: i18n('Credentials'),
     visibility: 'enabled',
   }),
 
@@ -24,8 +25,8 @@ export const deleteRpcCredentials = sdk.Action.withInput(
 
     return InputSpec.of({
       names: Value.multiselect({
-        name: 'Credentials',
-        description: 'Select one or more credentials to delete.',
+        name: i18n('Credentials'),
+        description: i18n('Select one or more credentials to delete.'),
         warning: null,
         default: [],
         values,
@@ -40,8 +41,8 @@ export const deleteRpcCredentials = sdk.Action.withInput(
     if (!names || (names as string[]).length === 0) {
       return {
         version: '1' as const,
-        title: 'No Credentials Selected',
-        message: 'Nothing was deleted.',
+        title: i18n('No Credentials Selected'),
+        message: i18n('Nothing was deleted.'),
         result: null,
       }
     }
@@ -62,8 +63,16 @@ export const deleteRpcCredentials = sdk.Action.withInput(
     const deleted = [...toDelete].join(', ')
     return {
       version: '1' as const,
-      title: 'Credentials Deleted',
-      message: `Removed: ${deleted}.${filtered.length > 0 ? ` Active credential is now "${filtered[0]!.name}".` : ' No credentials remaining.'}`,
+      title: i18n('Credentials Deleted'),
+      message: i18n('Removed: ${deleted}.${rest}', {
+        deleted,
+        rest:
+          filtered.length > 0
+            ? i18n(' Active credential is now "${name}".', {
+                name: filtered[0]!.name,
+              })
+            : i18n(' No credentials remaining.'),
+      }),
       result: null,
     }
   },

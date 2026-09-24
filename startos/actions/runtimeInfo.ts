@@ -2,6 +2,7 @@ import { sdk } from '../sdk'
 import { storeJson } from '../fileModels/store.json'
 import { Network, NETWORKS, networkPorts, rootDir } from '../utils'
 import { mainMounts } from '../mounts'
+import { i18n } from '../i18n'
 
 type BchdInfo = {
   version?: number
@@ -28,9 +29,10 @@ type BchdPeer = { inbound: boolean }
 export const runtimeInfo = sdk.Action.withoutInput(
   'runtime-info',
   async ({ effects: _effects }) => ({
-    name: 'Node Info',
-    description:
+    name: i18n('Node Info'),
+    description: i18n(
       'Display current node runtime information: version, network, connections, sync status.',
+    ),
     warning: null,
     allowedStatuses: 'only-running' as const,
     group: null,
@@ -87,22 +89,45 @@ export const runtimeInfo = sdk.Action.withoutInput(
 
         const lines: string[] = []
         if (info) {
-          lines.push(`Version: ${info.version ?? 'unknown'}`)
-          lines.push(`Protocol: ${info.protocolversion ?? 'unknown'}`)
+          lines.push(
+            i18n('Version: ${version}', {
+              version:
+                info.version != null ? String(info.version) : i18n('unknown'),
+            }),
+          )
+          lines.push(
+            i18n('Protocol: ${protocol}', {
+              protocol:
+                info.protocolversion != null
+                  ? String(info.protocolversion)
+                  : i18n('unknown'),
+            }),
+          )
           if (info.relayfee != null)
-            lines.push(`Relay Fee: ${info.relayfee} BCH/kB`)
+            lines.push(
+              i18n('Relay Fee: ${fee} BCH/kB', { fee: String(info.relayfee) }),
+            )
         }
         if (peers) {
           const inbound = peers.filter((p) => p.inbound).length
           lines.push(
-            `Connections: ${peers.length} (in: ${inbound}, out: ${peers.length - inbound})`,
+            i18n('Connections: ${total} (in: ${inbound}, out: ${outbound})', {
+              total: String(peers.length),
+              inbound: String(inbound),
+              outbound: String(peers.length - inbound),
+            }),
           )
         } else if (info?.connections != null) {
-          lines.push(`Connections: ${info.connections}`)
+          lines.push(
+            i18n('Connections: ${total}', { total: String(info.connections) }),
+          )
         }
         if (chain) {
           lines.push(
-            `Chain: ${chain.pruned ? 'pruned' : 'archival'} ${network}`,
+            i18n('Chain: ${kind} ${network}', {
+              kind: chain.pruned ? i18n('pruned') : i18n('archival'),
+              network,
+            }),
           )
           // `syncheight` is the best height BCHD's peers have offered. Not
           // `headers`, which it advances in step with `blocks`, and not
@@ -110,15 +135,25 @@ export const runtimeInfo = sdk.Action.withoutInput(
           const blocks = chain.blocks ?? 0
           const target = chain.syncheight ?? 0
           const vp = chain.verificationprogress ?? 0
-          lines.push(`Blocks: ${blocks} / ${target || (chain.headers ?? '?')}`)
           lines.push(
-            `Sync: ${target > blocks ? `${(vp * 100).toFixed(2)}%` : 'Complete'}`,
+            i18n('Blocks: ${blocks} / ${target}', {
+              blocks: String(blocks),
+              target: String(target || (chain.headers ?? '?')),
+            }),
+          )
+          lines.push(
+            i18n('Sync: ${status}', {
+              status:
+                target > blocks
+                  ? `${(vp * 100).toFixed(2)}%`
+                  : i18n('Complete'),
+            }),
           )
         }
 
         return {
           version: '1' as const,
-          title: 'Node Runtime Info',
+          title: i18n('Node Runtime Info'),
           message: null,
           result: {
             type: 'single' as const,

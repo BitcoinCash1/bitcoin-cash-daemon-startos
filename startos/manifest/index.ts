@@ -1,4 +1,5 @@
 import { setupManifest } from '@start9labs/start-sdk'
+import { long, short, torDescription } from './i18n'
 
 export const manifest = setupManifest({
   id: 'bchd',
@@ -9,10 +10,7 @@ export const manifest = setupManifest({
   upstreamRepo: 'https://github.com/gcash/bchd',
   marketingUrl: 'https://bchd.cash',
   donationUrl: null,
-  description: {
-    short: 'BCHD — Go-based Bitcoin Cash full node with gRPC and Neutrino',
-    long: 'BCHD is a full node implementation of the Bitcoin Cash protocol written in Go. Features include JSON-RPC API, gRPC API with pub/sub notifications, BIP 157/158 compact block filters (Neutrino), BIP 37 bloom filters, full transaction and address indexes, and Tor support for private peer connections.',
-  },
+  description: { short, long },
   volumes: ['main'],
   images: {
     bchd: {
@@ -22,8 +20,7 @@ export const manifest = setupManifest({
   },
   dependencies: {
     tor: {
-      description:
-        'Enables Tor onion routing for anonymous peer-to-peer connections. When Tor is installed and running, BCHD automatically routes all connections through the Tor network for enhanced privacy.',
+      description: torDescription,
       optional: true,
       metadata: {
         title: 'Tor',

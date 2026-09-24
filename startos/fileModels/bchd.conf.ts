@@ -1,5 +1,6 @@
 import { FileHelper, z } from '@start9labs/start-sdk'
 import { sdk } from '../sdk'
+import { i18n } from '../i18n'
 
 const iniNumber = z.union([z.string().transform(Number), z.number()])
 
@@ -62,48 +63,55 @@ export const bchdConf = FileHelper.ini(
 // Config spec for user-facing action and autoconfig
 export const fullConfigSpec = sdk.InputSpec.of({
   txindex: sdk.Value.toggle({
-    name: 'Transaction Index',
-    description:
+    name: i18n('Transaction Index'),
+    description: i18n(
       'Build a full transaction index (look up any transaction by its txid). Required by Fulcrum and most block explorers. Light to build — kept in lockstep with block sync. Cannot be enabled with pruning or Fast Sync.',
+    ),
     default: true,
   }),
   addrindex: sdk.Value.toggle({
-    name: 'Address Index',
-    description:
+    name: i18n('Address Index'),
+    description: i18n(
       'Build the address index so BCHD can answer "all transactions for an address" queries directly (gRPC getAddressTransactions, etc.). This is the slow part of initial sync (upstream bchd issue #219) and can turn a 1-2 day sync into weeks — leave it OFF unless a consumer queries addresses straight from BCHD. Fulcrum and most explorers build their own address index and do NOT need this. Requires Transaction Index. Enabling it later rebuilds the index from genesis (a one-time catch-up).',
+    ),
     default: false,
   }),
   fastsync: sdk.Value.toggle({
-    name: 'Fast Sync',
-    description:
+    name: i18n('Fast Sync'),
+    description: i18n(
       'Skip downloading and processing all blocks before the latest hardcoded checkpoint. BCHD starts from the checkpoint UTXO state and only syncs forward from there, dramatically reducing initial sync time. If the node is already past the checkpoint, this flag is automatically ignored. Incompatible with Transaction Index and Address Index — enabling Fast Sync will automatically disable both.',
-    warning:
+    ),
+    warning: i18n(
       'PERMANENT: Once Fast Sync is used, Transaction Index is locked out for the lifetime of this data directory. Pre-checkpoint blocks are never downloaded and cannot be indexed retroactively. If you later need txindex (required by Fulcrum), you must run Maintenance → Delete Mainnet Data and re-sync from genesis.',
+    ),
     default: false,
   }),
   prune: sdk.Value.number({
-    name: 'Prune Depth',
-    description:
+    name: i18n('Prune Depth'),
+    description: i18n(
       'Number of recent blocks to retain. 0 = disabled (keep full chain). Minimum 288 blocks when enabled. Incompatible with txindex.',
+    ),
     required: false,
     default: 0,
     min: 0,
     max: null,
     integer: true,
     units: 'blocks',
-    placeholder: '0 (disabled)',
-    warning: 'Enabling pruning disables the transaction index.',
+    placeholder: i18n('0 (disabled)'),
+    warning: i18n('Enabling pruning disables the transaction index.'),
   }),
   grpcEnabled: sdk.Value.toggle({
-    name: 'gRPC API',
-    description:
+    name: i18n('gRPC API'),
+    description: i18n(
       'Enable the gRPC API on port 8335. Provides modern API access and pub/sub notifications.',
+    ),
     default: true,
   }),
   dbcachesize: sdk.Value.number({
-    name: 'Database Cache (MiB)',
-    description:
+    name: i18n('Database Cache (MiB)'),
+    description: i18n(
       'Size of the LevelDB block/raw database cache. Controls how aggressively BCHD buffers raw block and chain state writes before flushing to disk. On systems with 4 GB RAM or less, keep this at 450 MiB or lower to avoid swap thrashing during IBD.',
+    ),
     required: true,
     default: 450,
     min: 64,
@@ -112,9 +120,10 @@ export const fullConfigSpec = sdk.InputSpec.of({
     units: 'MiB',
   }),
   utxocachemaxsize: sdk.Value.number({
-    name: 'UTXO Cache (MiB)',
-    description:
+    name: i18n('UTXO Cache (MiB)'),
+    description: i18n(
       'Maximum RAM allocated to the in-memory UTXO set cache. Larger values eliminate UTXO disk I/O during IBD, which is one of the main sync bottlenecks. The BCH UTXO set is approximately 1–2 GiB; setting this to 2048 on a machine with 8+ GB RAM eliminates most UTXO I/O. BCHD default: 450 MiB.',
+    ),
     required: true,
     default: 1024,
     min: 100,
@@ -123,9 +132,10 @@ export const fullConfigSpec = sdk.InputSpec.of({
     units: 'MiB',
   }),
   dbflushinterval: sdk.Value.number({
-    name: 'Database Flush Interval',
-    description:
+    name: i18n('Database Flush Interval'),
+    description: i18n(
       'Seconds between database flushes. BCHD batches writes to its bolt key-value store for performance. Lower values flush more often (safer but slower), higher values batch more (faster but risk data on crash).',
+    ),
     required: true,
     default: 1800,
     min: 60,
@@ -135,8 +145,10 @@ export const fullConfigSpec = sdk.InputSpec.of({
     placeholder: '1800',
   }),
   maxpeers: sdk.Value.number({
-    name: 'Max Peers',
-    description: 'Maximum number of inbound and outbound peer connections.',
+    name: i18n('Max Peers'),
+    description: i18n(
+      'Maximum number of inbound and outbound peer connections.',
+    ),
     required: true,
     default: 125,
     min: 0,
@@ -145,55 +157,62 @@ export const fullConfigSpec = sdk.InputSpec.of({
     units: null,
   }),
   onlynet: sdk.Value.multiselect({
-    name: 'Allowed Networks',
-    description:
+    name: i18n('Allowed Networks'),
+    description: i18n(
       'Restrict outbound peer connections to selected network types. Leave all selected to allow all networks.',
+    ),
     default: ALL_ONLYNETS,
     values: ONLYNET_VALUES,
     minLength: 1,
     maxLength: null,
   }),
   onionOnly: sdk.Value.toggle({
-    name: 'Onion-Only Mode',
-    description:
+    name: i18n('Onion-Only Mode'),
+    description: i18n(
       'Force peer connections to Tor only (equivalent to onlynet=onion). Disabled by default so Tor and clearnet can coexist.',
+    ),
     default: false,
   }),
   peerbloomfilters: sdk.Value.toggle({
-    name: 'Serve Bloom Filters (BIP37)',
-    description:
+    name: i18n('Serve Bloom Filters (BIP37)'),
+    description: i18n(
       'Serve BIP37 bloom filters to peers. Useful for SPV wallets but can be a DoS vector on public-facing nodes. Disable if you do not need SPV wallet support.',
+    ),
     default: true,
   }),
   cfindex: sdk.Value.toggle({
-    name: 'Compact Block Filters (BIP 157/158)',
-    description:
+    name: i18n('Compact Block Filters (BIP 157/158)'),
+    description: i18n(
       'Build and serve compact block filters (Neutrino). Required by light wallets using the BIP 157/158 protocol.',
+    ),
     default: true,
   }),
   torEnabled: sdk.Value.toggle({
-    name: 'Tor Routing',
-    description:
-      'Route all outbound connections through the Tor network for enhanced privacy. ' +
-      'Requires the Tor package to be installed and running. For faster IBD, Tor proxying is applied after initial sync.',
+    name: i18n('Tor Routing'),
+    description: i18n(
+      'Route all outbound connections through the Tor network for enhanced privacy. Requires the Tor package to be installed and running. For faster IBD, Tor proxying is applied after initial sync.',
+    ),
     default: true,
   }),
   torIsolation: sdk.Value.toggle({
-    name: 'Tor Stream Isolation',
-    description:
+    name: i18n('Tor Stream Isolation'),
+    description: i18n(
       'Use a separate Tor circuit for each peer connection (torisolation) when Tor proxying is active. Provides stronger privacy but causes aggressive peer churn during IBD — peers connect and drop in seconds, slowing sync significantly. Disable during Initial Block Download and re-enable after the node is fully synced.',
+    ),
     default: false,
   }),
   advertiseClearnetInbound: sdk.Value.toggle({
-    name: 'Advertise Clearnet Inbound',
-    description:
+    name: i18n('Advertise Clearnet Inbound'),
+    description: i18n(
       'Publish your public IPv4 and IPv6 clearnet endpoints for inbound peers. Respects the Allowed Networks setting — a network excluded by onlynet (or by Onion-Only Mode) is never advertised. Disabled by default for privacy.',
+    ),
     default: false,
   }),
   excessiveblocksize: sdk.Value.number({
-    name: 'Excessive Block Size',
-    description:
+    name: i18n('Excessive Block Size'),
+    description: i18n(
       'Max accepted block size in bytes. BCHD default: 32000000 (32 MB).',
+    ),
     required: false,
     default: null,
     min: 1000000,
@@ -203,8 +222,8 @@ export const fullConfigSpec = sdk.InputSpec.of({
     placeholder: '32000000',
   }),
   minrelaytxfee: sdk.Value.number({
-    name: 'Minimum Relay Fee',
-    description: 'Minimum fee rate (BCH/kB) for relaying transactions.',
+    name: i18n('Minimum Relay Fee'),
+    description: i18n('Minimum fee rate (BCH/kB) for relaying transactions.'),
     required: false,
     default: null,
     min: 0,

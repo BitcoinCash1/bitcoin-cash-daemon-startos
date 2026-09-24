@@ -11,11 +11,12 @@ import {
 import { bchdConf } from './fileModels/bchd.conf'
 import { storeJson } from './fileModels/store.json'
 import { mainMounts } from './mounts'
+import { i18n } from './i18n'
 
 export { mainMounts }
 
 export const main = sdk.setupMain(async ({ effects }) => {
-  console.log('Starting BCHD!')
+  console.log(i18n('Starting BCHD!'))
 
   const conf = await bchdConf.read().const(effects)
   const store = await storeJson.read().once()
@@ -51,15 +52,16 @@ export const main = sdk.setupMain(async ({ effects }) => {
   // cleared by the 'clear-index-pending' oneshot once RPC confirms catch-up done.
   if (store?.txindexCatchupPending) {
     console.log(
-      '[Index Rebuild] Transaction Index is (re)building from genesis on this start. ' +
-        'Live progress follows as "INDX: Indexed N blocks ... height H/Y (PP%)" log lines.',
+      i18n(
+        '[Index Rebuild] Transaction Index is (re)building from genesis on this start. Live progress follows as "INDX: Indexed N blocks ... height H/Y (PP%)" log lines.',
+      ),
     )
   }
   if (store?.addrindexCatchupPending) {
     console.log(
-      '[Index Rebuild] Address Index is (re)building from genesis on this start ' +
-        '(the slow index — upstream bchd issue #219). ' +
-        'Live progress follows as "INDX: Indexed N blocks ... height H/Y (PP%)" log lines.',
+      i18n(
+        '[Index Rebuild] Address Index is (re)building from genesis on this start (the slow index — upstream bchd issue #219). Live progress follows as "INDX: Indexed N blocks ... height H/Y (PP%)" log lines.',
+      ),
     )
   }
 
@@ -268,9 +270,13 @@ export const main = sdk.setupMain(async ({ effects }) => {
       if (hy === lastIndexLine) return // unchanged → don't repeat
       lastIndexLine = hy
       if (txPending)
-        console.log(`[Index Rebuild] Transaction Index catch-up: ${hy}`)
+        console.log(
+          i18n('[Index Rebuild] Transaction Index catch-up: ${hy}', { hy }),
+        )
       if (adPending)
-        console.log(`[Index Rebuild] Address Index catch-up: ${hy}`)
+        console.log(
+          i18n('[Index Rebuild] Address Index catch-up: ${hy}', { hy }),
+        )
     } catch {
       // never let log-emission break the health check
     }
@@ -278,7 +284,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
 
   const excludedByOnlynet = () => ({
     result: 'disabled' as const,
-    message: 'Excluded by onlynet',
+    message: i18n('Excluded by onlynet'),
   })
 
   return sdk.Daemons.of(effects)
@@ -338,7 +344,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
         sigtermTimeout: 300_000,
       },
       ready: {
-        display: 'RPC',
+        display: i18n('RPC'),
         fn: async () => {
           // Emit per-index rebuild progress here: this ready poll runs repeatedly
           // during startup WHILE RPC is still down, which is exactly when an index
@@ -350,10 +356,13 @@ export const main = sdk.setupMain(async ({ effects }) => {
           try {
             const res = await rpc('getinfo')
             return res.exitCode === 0
-              ? { message: 'BCHD RPC is ready', result: 'success' }
-              : { message: 'BCHD RPC is starting...', result: 'starting' }
+              ? { message: i18n('BCHD RPC is ready'), result: 'success' }
+              : { message: i18n('BCHD RPC is starting...'), result: 'starting' }
           } catch {
-            return { message: 'BCHD RPC is starting...', result: 'starting' }
+            return {
+              message: i18n('BCHD RPC is starting...'),
+              result: 'starting',
+            }
           }
         },
       },
@@ -384,7 +393,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
     })
     .addHealthCheck('sync-progress', {
       ready: {
-        display: 'Blockchain Sync',
+        display: i18n('Blockchain Sync'),
         fn: async () => {
           // (Per-index rebuild progress is emitted from the primary daemon's
           // ready poll, which runs during the catch-up while RPC is down.)
@@ -396,7 +405,10 @@ export const main = sdk.setupMain(async ({ effects }) => {
           try {
             const res = await rpcWithRetry('getblockchaininfo')
             if (res.exitCode !== 0)
-              return { message: 'Waiting for sync info', result: 'loading' }
+              return {
+                message: i18n('Waiting for sync info'),
+                result: 'loading',
+              }
             const info = JSON.parse(res.stdout.toString()) as {
               blocks: number
               syncheight?: number
@@ -408,16 +420,23 @@ export const main = sdk.setupMain(async ({ effects }) => {
             if ((info.syncheight ?? 0) > info.blocks) {
               const pct = ((info.verificationprogress ?? 0) * 100).toFixed(2)
               return {
-                message: `Syncing blocks... ${pct}% (${netLabel})`,
+                message: i18n('Syncing blocks... ${pct}% (${netLabel})', {
+                  pct,
+                  netLabel,
+                }),
                 result: 'loading',
               }
             }
             return {
-              message: `Synced — block ${info.blocks}${info.pruned ? ' (pruned)' : ''} (${netLabel})`,
+              message: i18n('Synced — block ${blocks}${pruned} (${netLabel})', {
+                blocks: String(info.blocks),
+                pruned: info.pruned ? i18n(' (pruned)') : '',
+                netLabel,
+              }),
               result: 'success',
             }
           } catch {
-            return { message: 'Waiting for sync info', result: 'loading' }
+            return { message: i18n('Waiting for sync info'), result: 'loading' }
           }
         },
       },
@@ -448,34 +467,46 @@ export const main = sdk.setupMain(async ({ effects }) => {
     })
     .addHealthCheck('peer-connections', {
       ready: {
-        display: 'Peer Connections',
+        display: i18n('Peer Connections'),
         fn: async () => {
           // Mirrors the BCHN reference.
           try {
             const res = await rpcWithRetry('getpeerinfo')
             if (res.exitCode !== 0)
-              return { message: 'Unable to query peers', result: 'loading' }
+              return {
+                message: i18n('Unable to query peers'),
+                result: 'loading',
+              }
             const peers = JSON.parse(res.stdout.toString()) as Array<{
               inbound: boolean
             }>
             const count = peers.length
             if (count === 0)
               return {
-                message: 'No peers connected — node may be starting up',
+                message: i18n('No peers connected — node may be starting up'),
                 result: 'loading',
               }
             if (count < 3)
               return {
-                message: `Only ${count} peer(s) connected`,
+                message: i18n('Only ${count} peer(s) connected', {
+                  count: String(count),
+                }),
                 result: 'loading',
               }
             const inbound = peers.filter((p) => p.inbound).length
             return {
-              message: `${count} peers (${count - inbound} outbound, ${inbound} inbound)`,
+              message: i18n(
+                '${count} peers (${outbound} outbound, ${inbound} inbound)',
+                {
+                  count: String(count),
+                  outbound: String(count - inbound),
+                  inbound: String(inbound),
+                },
+              ),
               result: 'success',
             }
           } catch {
-            return { message: 'Unable to query peers', result: 'loading' }
+            return { message: i18n('Unable to query peers'), result: 'loading' }
           }
         },
       },
@@ -483,29 +514,32 @@ export const main = sdk.setupMain(async ({ effects }) => {
     })
     .addHealthCheck('grpc', {
       ready: {
-        display: 'gRPC',
+        display: i18n('gRPC'),
         fn: async () => {
           if (!grpcEnabled) {
             return {
               result: 'disabled' as const,
-              message:
+              message: i18n(
                 'gRPC API is disabled — enable grpclisten in Node Settings to use it',
+              ),
             }
           }
           try {
             return (await grpcReady())
               ? {
                   result: 'success' as const,
-                  message: `gRPC API is listening on port ${grpcPort}`,
+                  message: i18n('gRPC API is listening on port ${grpcPort}', {
+                    grpcPort: String(grpcPort),
+                  }),
                 }
               : {
                   result: 'loading' as const,
-                  message: 'gRPC API is starting up...',
+                  message: i18n('gRPC API is starting up...'),
                 }
           } catch {
             return {
               result: 'loading' as const,
-              message: 'gRPC API is starting up...',
+              message: i18n('gRPC API is starting up...'),
             }
           }
         },
@@ -514,28 +548,29 @@ export const main = sdk.setupMain(async ({ effects }) => {
     })
     .addHealthCheck('tor', {
       ready: {
-        display: 'Tor',
+        display: i18n('Tor'),
         fn: () => {
           if (onionOnly && !torEnabled)
             return {
               result: 'failure' as const,
-              message:
+              message: i18n(
                 'Invalid config: onlynet=onion requires Tor routing enabled',
+              ),
             }
           if (!torEnabled)
             return {
               result: 'disabled' as const,
-              message: 'Tor proxy is disabled in config',
+              message: i18n('Tor proxy is disabled in config'),
             }
           if (!torInstalled)
             return {
               result: 'disabled' as const,
-              message: 'Tor is not installed',
+              message: i18n('Tor is not installed'),
             }
           if (!torRunning)
             return {
               result: 'disabled' as const,
-              message: 'Tor is not running',
+              message: i18n('Tor is not running'),
             }
           if (onlynetActive && !onlynetList.includes('onion'))
             return excludedByOnlynet()
@@ -543,11 +578,17 @@ export const main = sdk.setupMain(async ({ effects }) => {
             result: 'success' as const,
             message: externalip.some((ip) => ip.includes('.onion'))
               ? store?.torIsolation
-                ? 'Tor proxy active with stream isolation — inbound and outbound connections'
-                : 'Tor proxy active — inbound and outbound connections'
+                ? i18n(
+                    'Tor proxy active with stream isolation — inbound and outbound connections',
+                  )
+                : i18n('Tor proxy active — inbound and outbound connections')
               : store?.torIsolation
-                ? 'Tor proxy active with stream isolation — outbound only. Add an onion address to enable inbound.'
-                : 'Tor proxy active — outbound only. Add an onion address to enable inbound.',
+                ? i18n(
+                    'Tor proxy active with stream isolation — outbound only. Add an onion address to enable inbound.',
+                  )
+                : i18n(
+                    'Tor proxy active — outbound only. Add an onion address to enable inbound.',
+                  ),
           }
         },
       },
@@ -555,17 +596,17 @@ export const main = sdk.setupMain(async ({ effects }) => {
     })
     .addHealthCheck('i2p', {
       ready: {
-        display: 'I2P',
+        display: i18n('I2P'),
         fn: () => ({
           result: 'disabled' as const,
-          message: 'I2P support is not implemented yet.',
+          message: i18n('I2P support is not implemented yet.'),
         }),
       },
       requires: [],
     })
     .addHealthCheck('clearnet', {
       ready: {
-        display: 'Clearnet',
+        display: i18n('Clearnet'),
         fn: () => {
           if (
             onlynetActive &&
@@ -576,8 +617,8 @@ export const main = sdk.setupMain(async ({ effects }) => {
           return {
             result: 'success' as const,
             message: externalip.some((ip) => ip && !ip.includes('.onion'))
-              ? 'Inbound and outbound connections'
-              : 'Outbound only. Publish an IP address to enable inbound.',
+              ? i18n('Inbound and outbound connections')
+              : i18n('Outbound only. Publish an IP address to enable inbound.'),
           }
         },
       },
@@ -594,7 +635,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
         sigtermTimeout: 5_000,
       },
       ready: {
-        display: 'RPC Plaintext Proxy',
+        display: i18n('RPC Plaintext Proxy'),
         fn: async () => {
           // Use /proc/net/tcp to check if stunnel is listening — avoids
           // opening a TCP connection to the TLS-terminating proxy which causes
@@ -612,16 +653,19 @@ export const main = sdk.setupMain(async ({ effects }) => {
             return probe.exitCode === 0
               ? {
                   result: 'success' as const,
-                  message: `Plaintext RPC proxy ready on port ${rpcPlaintextPort} (stunnel → BCHD TLS)`,
+                  message: i18n(
+                    'Plaintext RPC proxy ready on port ${rpcPlaintextPort} (stunnel → BCHD TLS)',
+                    { rpcPlaintextPort: String(rpcPlaintextPort) },
+                  ),
                 }
               : {
                   result: 'starting' as const,
-                  message: 'Plaintext RPC proxy starting...',
+                  message: i18n('Plaintext RPC proxy starting...'),
                 }
           } catch {
             return {
               result: 'starting' as const,
-              message: 'Plaintext RPC proxy starting...',
+              message: i18n('Plaintext RPC proxy starting...'),
             }
           }
         },

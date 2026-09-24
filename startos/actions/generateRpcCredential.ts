@@ -1,21 +1,23 @@
 import { sdk } from '../sdk'
 import { storeJson } from '../fileModels/store.json'
+import { i18n } from '../i18n'
 
 const { InputSpec, Value } = sdk
 
 const spec = InputSpec.of({
   name: Value.text({
-    name: 'Credential Name',
-    description:
+    name: i18n('Credential Name'),
+    description: i18n(
       'A friendly label for this credential (e.g. "Fulcrum", "Explorer", "Wallet").',
+    ),
     required: true,
     default: null,
     masked: false,
     placeholder: 'My Service',
   }),
   username: Value.text({
-    name: 'Username',
-    description: 'Alphanumeric username for RPC authentication.',
+    name: i18n('Username'),
+    description: i18n('Alphanumeric username for RPC authentication.'),
     required: true,
     default: null,
     masked: false,
@@ -27,12 +29,13 @@ export const generateRpcCredential = sdk.Action.withInput(
   'generate-rpc-credential',
 
   async ({ effects }) => ({
-    name: 'Generate RPC Credential',
-    description:
+    name: i18n('Generate RPC Credential'),
+    description: i18n(
       'Create a new named RPC credential. The generated password is stored and can be viewed later in "View RPC Credentials".',
+    ),
     warning: null,
     allowedStatuses: 'any',
-    group: 'Credentials',
+    group: i18n('Credentials'),
     visibility: 'enabled',
   }),
 
@@ -74,13 +77,15 @@ export const generateRpcCredential = sdk.Action.withInput(
 
     return {
       version: '1' as const,
-      title: `RPC Credential: ${name}`,
+      title: i18n('RPC Credential: ${name}', { name }),
       message: [
-        'Credential saved. You can view it anytime in **View RPC Credentials**.',
+        i18n(
+          'Credential saved. You can view it anytime in **View RPC Credentials**.',
+        ),
         '',
-        `**Name:** ${name}`,
-        `**Username:** ${username}`,
-        `**Password:** ${password}`,
+        i18n('**Name:** ${name}', { name }),
+        i18n('**Username:** ${username}', { username }),
+        i18n('**Password:** ${password}', { password }),
       ].join('\n'),
       result: {
         type: 'single' as const,

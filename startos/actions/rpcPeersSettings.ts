@@ -6,17 +6,19 @@ import {
   OnlynetKey,
 } from '../fileModels/bchd.conf'
 import { storeJson } from '../fileModels/store.json'
+import { i18n } from '../i18n'
 
 export const rpcPeersSettings = sdk.Action.withInput(
   'rpc-peers-settings',
 
   async ({ effects }: { effects: any }) => ({
-    name: 'RPC & Peers Settings',
-    description:
+    name: i18n('RPC & Peers Settings'),
+    description: i18n(
       'Configure peer connections, bloom filters, compact block filters, and Tor proxy behavior.',
+    ),
     warning: null,
     allowedStatuses: 'any',
-    group: 'Configuration',
+    group: i18n('Configuration'),
     visibility: 'enabled',
   }),
 

@@ -6,14 +6,16 @@ import {
 } from '../../fileModels/bchd.conf'
 import { storeJson } from '../../fileModels/store.json'
 import { sdk } from '../../sdk'
+import { i18n } from '../../i18n'
 
 export const autoconfig = sdk.Action.withInput(
   'autoconfig',
 
   async ({ effects }) => ({
-    name: 'Auto-Configure',
-    description:
+    name: i18n('Auto-Configure'),
+    description: i18n(
       'Automatically configure BCHD for the needs of another service',
+    ),
     warning: null,
     allowedStatuses: 'any',
     group: null,

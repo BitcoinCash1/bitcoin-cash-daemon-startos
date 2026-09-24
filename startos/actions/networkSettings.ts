@@ -1,22 +1,25 @@
 import { sdk } from '../sdk'
 import { storeJson } from '../fileModels/store.json'
 import { NETWORKS } from '../utils'
+import { i18n } from '../i18n'
 
 const { InputSpec, Value } = sdk
 
 const networkSpec = InputSpec.of({
   network: Value.select({
-    name: 'Chain Network',
-    description:
+    name: i18n('Chain Network'),
+    description: i18n(
       'Bitcoin Cash network to run. Changing this restarts BCHD and syncs the selected network from its own separate data directory.',
-    warning:
+    ),
+    warning: i18n(
       'Mainnet data is preserved. Chipnet/regtest use separate data directories and can be cleaned via Maintenance actions.',
+    ),
     values: {
-      mainnet: 'Mainnet',
-      testnet3: 'Testnet3 (BCH test network)',
-      testnet4: 'Testnet4 (BCH test network v4)',
-      chipnet: 'Chipnet (upgrade testing network)',
-      regtest: 'Regtest (local/private testing network)',
+      mainnet: i18n('Mainnet'),
+      testnet3: i18n('Testnet3 (BCH test network)'),
+      testnet4: i18n('Testnet4 (BCH test network v4)'),
+      chipnet: i18n('Chipnet (upgrade testing network)'),
+      regtest: i18n('Regtest (local/private testing network)'),
     },
     default: 'mainnet',
   }),
@@ -26,13 +29,15 @@ export const networkSettings = sdk.Action.withInput(
   'network-settings',
 
   async () => ({
-    name: 'Chain Network',
-    description:
+    name: i18n('Chain Network'),
+    description: i18n(
       'Select the BCH chain network for this node. RPC/P2P/gRPC ports are adjusted automatically for the selected network.',
-    warning:
+    ),
+    warning: i18n(
       'Changing network restarts BCHD immediately. The selected network may need a full sync if no prior data exists.',
+    ),
     allowedStatuses: 'any',
-    group: 'Configuration',
+    group: i18n('Configuration'),
     visibility: 'enabled',
   }),
 
@@ -56,8 +61,8 @@ export const networkSettings = sdk.Action.withInput(
     if (current === next) {
       return {
         version: '1' as const,
-        title: 'Network Unchanged',
-        message: `BCHD is already configured for ${next}.`,
+        title: i18n('Network Unchanged'),
+        message: i18n('BCHD is already configured for ${next}.', { next }),
         result: null,
       }
     }
@@ -70,8 +75,11 @@ export const networkSettings = sdk.Action.withInput(
 
     return {
       version: '1' as const,
-      title: 'Network Updated',
-      message: `Switched BCHD from ${current} to ${next}. Restart triggered automatically.`,
+      title: i18n('Network Updated'),
+      message: i18n(
+        'Switched BCHD from ${current} to ${next}. Restart triggered automatically.',
+        { current, next },
+      ),
       result: null,
     }
   },
