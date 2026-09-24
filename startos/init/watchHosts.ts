@@ -15,11 +15,17 @@ export const watchHosts = sdk.setupOnInit(async (effects) => {
   const advertiseClearnetInbound = !!store?.advertiseClearnetInbound
 
   const conf = await bchdConf.read().const(effects)
-  const onlynetList: string[] = ((conf?.onlynet as string[] | undefined) ?? []).filter(Boolean)
+  const onlynetList: string[] = (
+    (conf?.onlynet as string[] | undefined) ?? []
+  ).filter(Boolean)
   const onlynetActive = onlynetList.length > 0
   const allowIpv4 = !onlynetActive || onlynetList.includes('ipv4')
   const allowIpv6 = !onlynetActive || onlynetList.includes('ipv6')
 
+  // One subscription on the peer host; the map fn walks the host to the peer
+  // interface and returns just the advertised externalip list (onions + the
+  // optional public IPv4/IPv6), so this re-runs only when that list changes
+  // rather than on unrelated host churn.
   const externalip = await sdk.host
     .getOwn(effects, peerHostId, (host) => {
       const iface =
