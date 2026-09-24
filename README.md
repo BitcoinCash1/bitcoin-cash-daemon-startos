@@ -36,11 +36,11 @@
 
 ## Image and Container Runtime
 
-One image, built here from upstream source. Because BCHD is pure Go, the build cross-compiles natively for every target rather than emulating one — which is why this package can offer riscv64 where most cannot.
+One image. `bchd` and `bchctl` come from the official image upstream publishes on every release, `ghcr.io/gcash/bchd` (linux/amd64 and linux/arm64). Upstream ships no riscv64 image, so for riscv64 the `Dockerfile` compiles the same release tag from source; BCHD is pure Go, so that build cross-compiles natively instead of emulating. `gencerts` is not in the official image and is built from the same tag.
 
 | Property      | Value                                                             |
 | ------------- | ----------------------------------------------------------------- |
-| Image         | Built from this repo's `Dockerfile`                               |
+| Image         | This repo's `Dockerfile`, on top of `ghcr.io/gcash/bchd`          |
 | Architectures | x86_64, aarch64, riscv64                                          |
 | Command       | `bchd`, with every setting passed as a flag rather than inherited |
 
@@ -276,7 +276,7 @@ The TLS certificate surviving is what stops a restore from breaking clients that
 
 ## Upstream Updates
 
-`check-upstream.yml` looks for a new BCHD release daily. When one appears, `scripts/auto-bump.sh` sets `startos/versions/current.ts` to `<upstream>:0`, resets `ALLOW_DOWNGRADE` to `false`, updates `ARG BCHD_VERSION` in the `Dockerfile`, commits the bump straight to `master`, and the workflow dispatches Tag and Release, which builds and publishes the new version. Package-only fixes bump the revision after the colon by hand.
+`check-upstream.yml` looks for a new BCHD release daily. When one appears and its official image (`ghcr.io/gcash/bchd:<tag>`, amd64 and arm64) is published, `scripts/auto-bump.sh` sets `startos/versions/current.ts` to `<upstream>:0`, resets `ALLOW_DOWNGRADE` to `false`, updates `ARG BCHD_VERSION` in the `Dockerfile`, commits the bump straight to `master`, and the workflow dispatches Tag and Release, which builds and publishes the new version. Package-only fixes bump the revision after the colon by hand.
 
 ---
 
@@ -284,7 +284,7 @@ The TLS certificate surviving is what stops a restore from breaking clients that
 
 ```yaml
 package_id: bchd
-image: built from ./Dockerfile # bchd cross-compiled from upstream Go source
+image: built from ./Dockerfile # bchd/bchctl from ghcr.io/gcash/bchd (amd64, arm64); riscv64 compiled from the same tag
 architectures:
   - x86_64
   - aarch64

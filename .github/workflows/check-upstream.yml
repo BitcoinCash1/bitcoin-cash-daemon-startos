@@ -33,6 +33,14 @@ jobs:
             exit 0
           fi
 
+          # The package takes bchd from the official image, which upstream
+          # publishes shortly after the release. Wait for it (next run retries).
+          for arch in amd64 arm64; do
+            if ! docker manifest inspect "ghcr.io/gcash/bchd:$LATEST" | grep -q "\"architecture\": \"$arch\""; then
+              echo "ghcr.io/gcash/bchd:$LATEST has no $arch image yet — trying again next run"
+              exit 0
+            fi
+          done
 
           echo "Updating $CURRENT -> $LATEST"
           BEFORE=$(git rev-parse HEAD)
