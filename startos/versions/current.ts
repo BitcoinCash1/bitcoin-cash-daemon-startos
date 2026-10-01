@@ -14,27 +14,37 @@ export const current = VersionInfo.of({
 
 Bitcoin Cash Daemon reserved the start of every block template for "high-priority" transactions and, with no minimum block size, could hand mining pools near-empty templates while a backlog of paying transactions waited. Templates now include transactions by fee rate throughout, so low-fee transactions and long unconfirmed chains are no longer left out.
 
-Also included: Blockchain Sync no longer reports Synced while the node is still catching up, and the Runtime Info action reads sync progress the same way.`,
+Also included: Blockchain Sync no longer reports Synced while the node is still catching up, and the Runtime Info action reads sync progress the same way.
+
+Deleting mainnet or test network data no longer stops partway through on a large data directory.`,
     es_ES: `Las plantillas de bloque se llenan por comisión desde el primer byte.
 
 Bitcoin Cash Daemon reservaba el inicio de cada plantilla de bloque para transacciones «de alta prioridad» y, sin tamaño mínimo de bloque, podía entregar a los pools de minería plantillas casi vacías mientras esperaba una cola de transacciones que pagaban comisión. Ahora las plantillas incluyen las transacciones por tasa de comisión en todo momento, así que las de comisión baja y las cadenas largas sin confirmar ya no quedan fuera.
 
-También incluido: «Sincronización de la cadena» ya no indica Sincronizado mientras el nodo aún se pone al día, y la acción «Información de ejecución» calcula el progreso de la misma forma.`,
+También incluido: «Sincronización de la cadena» ya no indica Sincronizado mientras el nodo aún se pone al día, y la acción «Información de ejecución» calcula el progreso de la misma forma.
+
+Eliminar los datos de mainnet o de las redes de prueba ya no se detiene a medias en un directorio de datos grande.`,
     de_DE: `Block-Vorlagen werden ab dem ersten Byte nach Gebühr gefüllt.
 
 Bitcoin Cash Daemon reservierte den Anfang jeder Block-Vorlage für Transaktionen „hoher Priorität" und konnte ohne Mindestblockgröße Mining-Pools nahezu leere Vorlagen liefern, während ein Rückstau zahlender Transaktionen wartete. Vorlagen nehmen Transaktionen jetzt durchgehend nach Gebührenrate auf, sodass Transaktionen mit niedriger Gebühr und lange unbestätigte Ketten nicht mehr fehlen.
 
-Außerdem enthalten: „Blockchain-Synchronisierung" meldet nicht mehr Synchronisiert, während der Knoten noch aufholt, und die Aktion „Laufzeitinformationen" ermittelt den Fortschritt auf dieselbe Weise.`,
+Außerdem enthalten: „Blockchain-Synchronisierung" meldet nicht mehr Synchronisiert, während der Knoten noch aufholt, und die Aktion „Laufzeitinformationen" ermittelt den Fortschritt auf dieselbe Weise.
+
+Das Löschen von Mainnet- oder Testnetzdaten bricht bei einem großen Datenverzeichnis nicht mehr mittendrin ab.`,
     pl_PL: `Szablony bloków są wypełniane według opłaty od pierwszego bajtu.
 
 Bitcoin Cash Daemon rezerwował początek każdego szablonu bloku na transakcje „o wysokim priorytecie" i bez minimalnego rozmiaru bloku mógł przekazywać kopalniom niemal puste szablony, podczas gdy czekała kolejka płacących transakcji. Szablony obejmują teraz transakcje według stawki opłaty w całości, więc transakcje z niską opłatą i długie łańcuchy niepotwierdzonych transakcji nie są już pomijane.
 
-Również w tej wersji: „Synchronizacja łańcucha" nie pokazuje już Zsynchronizowano, gdy węzeł wciąż nadrabia zaległości, a akcja „Informacje o działaniu" liczy postęp w ten sam sposób.`,
+Również w tej wersji: „Synchronizacja łańcucha" nie pokazuje już Zsynchronizowano, gdy węzeł wciąż nadrabia zaległości, a akcja „Informacje o działaniu" liczy postęp w ten sam sposób.
+
+Usuwanie danych mainnetu lub sieci testowych nie zatrzymuje się już w połowie przy dużym katalogu danych.`,
     fr_FR: `Les modèles de bloc sont remplis par frais dès le premier octet.
 
 Bitcoin Cash Daemon réservait le début de chaque modèle de bloc aux transactions « haute priorité » et, sans taille de bloc minimale, pouvait fournir aux pools de minage des modèles presque vides alors qu'une file de transactions payantes attendait. Les modèles incluent désormais les transactions par taux de frais sur toute leur longueur : les transactions à faibles frais et les longues chaînes non confirmées ne sont plus laissées de côté.
 
-Également inclus : « Synchronisation de la chaîne » n'indique plus Synchronisé alors que le nœud rattrape encore son retard, et l'action « Informations d'exécution » calcule la progression de la même façon.`,
+Également inclus : « Synchronisation de la chaîne » n'indique plus Synchronisé alors que le nœud rattrape encore son retard, et l'action « Informations d'exécution » calcule la progression de la même façon.
+
+La suppression des données du mainnet ou des réseaux de test ne s'arrête plus en cours de route sur un répertoire de données volumineux.`,
   },
   migrations: {
     up: async ({ effects }) => {},
