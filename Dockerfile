@@ -1,4 +1,4 @@
-ARG BCHD_VERSION=v0.22.2
+ARG BCHD_VERSION=v0.22.3
 
 # ── bchd and bchctl ─────────────────────────────────────────────────
 # Taken from the official image, ghcr.io/gcash/bchd, which upstream publishes
