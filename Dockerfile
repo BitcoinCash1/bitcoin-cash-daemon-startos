@@ -9,7 +9,7 @@ FROM ghcr.io/gcash/bchd:${BCHD_VERSION} AS bchd-arm64
 
 # Source stages: pure Go (CGO_ENABLED=0), cross-compiled on the builder, so they
 # never need QEMU whatever the target arch.
-FROM --platform=$BUILDPLATFORM golang:1.25-bookworm AS bchd-source
+FROM --platform=$BUILDPLATFORM golang:1.26-bookworm AS bchd-source
 ARG BCHD_VERSION
 # Redeclared without a default on purpose: giving a predefined build arg a value
 # shadows the one buildx injects, so `ARG TARGETARCH=amd64` would pin every target
